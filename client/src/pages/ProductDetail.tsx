@@ -39,7 +39,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 // Lazy load 3D viewer for better performance
-const ProductViewer3D = lazy(() => import('@/components/ProductViewer3D'));
+const Universal3DViewer = lazy(() => import('@/components/Universal3DViewer'));
 
 // Interactive Image Viewer with Zoom and Pan
 function ImageViewer({ 
@@ -456,9 +456,9 @@ export default function ProductDetail() {
                 </>
               ) : (
                 <Suspense fallback={<Viewer3DFallback />}>
-                  <ProductViewer3D 
-                    imageUrl={productImages[0]} 
-                    productName={product.title}
+                  <Universal3DViewer 
+                    img={productImages[0]} 
+                    type={product.type3D}
                   />
                 </Suspense>
               )}

@@ -37,6 +37,9 @@ export interface Store {
   createdAt: Date;
 }
 
+// Product 3D type for Universal3DViewer
+export type Product3DType = 'bag' | 'box' | 'flat';
+
 export interface Product {
   id: string;
   slug: string;
@@ -56,6 +59,7 @@ export interface Product {
   sold: number;
   featured: boolean;
   createdAt: Date;
+  type3D: Product3DType; // Type for 3D viewer: bag, box, or flat
 }
 
 export interface CartItem {
@@ -186,6 +190,7 @@ export const products: Product[] = [
     sold: 342,
     featured: true,
     createdAt: new Date('2024-01-10'),
+    type3D: 'bag',
   },
   {
     id: 'prod-2',
@@ -206,6 +211,7 @@ export const products: Product[] = [
     sold: 156,
     featured: true,
     createdAt: new Date('2024-02-05'),
+    type3D: 'flat',
   },
   {
     id: 'prod-3',
@@ -225,6 +231,7 @@ export const products: Product[] = [
     sold: 1893,
     featured: true,
     createdAt: new Date('2024-01-20'),
+    type3D: 'box',
   },
   {
     id: 'prod-4',
@@ -245,6 +252,7 @@ export const products: Product[] = [
     sold: 89,
     featured: false,
     createdAt: new Date('2024-03-01'),
+    type3D: 'flat',
   },
   {
     id: 'prod-5',
@@ -264,6 +272,7 @@ export const products: Product[] = [
     sold: 567,
     featured: false,
     createdAt: new Date('2024-02-15'),
+    type3D: 'box',
   },
   {
     id: 'prod-6',
@@ -289,6 +298,7 @@ export const products: Product[] = [
     sold: 445,
     featured: true,
     createdAt: new Date('2024-01-25'),
+    type3D: 'flat',
   },
   // ========== NUEVOS PRODUCTOS ==========
   {
@@ -315,6 +325,7 @@ export const products: Product[] = [
     sold: 567,
     featured: true,
     createdAt: new Date('2024-03-05'),
+    type3D: 'bag',
   },
   {
     id: 'prod-8',
@@ -334,6 +345,7 @@ export const products: Product[] = [
     sold: 423,
     featured: false,
     createdAt: new Date('2024-02-20'),
+    type3D: 'box',
   },
   {
     id: 'prod-9',
@@ -354,6 +366,7 @@ export const products: Product[] = [
     sold: 234,
     featured: false,
     createdAt: new Date('2024-03-10'),
+    type3D: 'flat',
   },
   {
     id: 'prod-10',
@@ -373,6 +386,7 @@ export const products: Product[] = [
     sold: 612,
     featured: true,
     createdAt: new Date('2024-02-28'),
+    type3D: 'box',
   },
   {
     id: 'prod-11',
@@ -393,6 +407,7 @@ export const products: Product[] = [
     sold: 123,
     featured: false,
     createdAt: new Date('2024-01-15'),
+    type3D: 'flat',
   },
   {
     id: 'prod-12',
@@ -412,6 +427,7 @@ export const products: Product[] = [
     sold: 345,
     featured: false,
     createdAt: new Date('2024-03-01'),
+    type3D: 'box',
   },
   {
     id: 'prod-13',
@@ -432,6 +448,7 @@ export const products: Product[] = [
     sold: 289,
     featured: true,
     createdAt: new Date('2024-02-10'),
+    type3D: 'flat',
   },
   {
     id: 'prod-14',
@@ -451,6 +468,7 @@ export const products: Product[] = [
     sold: 478,
     featured: false,
     createdAt: new Date('2024-02-25'),
+    type3D: 'box',
   },
   {
     id: 'prod-15',
@@ -470,6 +488,7 @@ export const products: Product[] = [
     sold: 167,
     featured: false,
     createdAt: new Date('2024-03-08'),
+    type3D: 'flat',
   },
   {
     id: 'prod-16',
@@ -490,6 +509,7 @@ export const products: Product[] = [
     sold: 89,
     featured: false,
     createdAt: new Date('2024-03-12'),
+    type3D: 'flat',
   },
   {
     id: 'prod-17',
@@ -509,6 +529,7 @@ export const products: Product[] = [
     sold: 534,
     featured: false,
     createdAt: new Date('2024-02-18'),
+    type3D: 'box',
   },
   {
     id: 'prod-18',
@@ -529,6 +550,7 @@ export const products: Product[] = [
     sold: 45,
     featured: true,
     createdAt: new Date('2024-01-30'),
+    type3D: 'bag',
   },
 ];
 

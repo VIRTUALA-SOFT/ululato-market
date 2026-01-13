@@ -1,7 +1,7 @@
 /**
  * ULULATO Navbar Component
- * Design: Glassmorphic sticky navbar with neon accents
- * Style: "Neon Ancestral" - Cyberpunk Indígena
+ * Design: Header con logo U + línea vertical + MARKET en amarillo
+ * Style: Dark Mode, High Contrast, Glassmorphism
  */
 
 import { useState, useEffect } from 'react';
@@ -45,21 +45,30 @@ export default function Navbar() {
         className={cn(
           'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
           isScrolled
-            ? 'backdrop-blur-xl bg-background/80 border-b border-white/10 shadow-lg shadow-black/20'
+            ? 'backdrop-blur-xl bg-[#050505]/90 border-b border-white/10 shadow-lg shadow-black/20'
             : 'bg-transparent'
         )}
       >
         <div className="container mx-auto">
           <div className="flex items-center justify-between h-16 md:h-20">
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-2 group">
+            {/* Logo: U + Línea Vertical + MARKET */}
+            <Link href="/" className="flex items-center gap-3 group">
+              {/* Logo U */}
               <div className="relative">
-                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-primary via-primary/80 to-secondary flex items-center justify-center transition-all duration-300">
-                  <span className="text-primary-foreground font-display font-bold text-lg md:text-xl">U</span>
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-[#FFD100] via-[#FFD100]/80 to-[#C81D25] flex items-center justify-center transition-all duration-300 group-hover:shadow-lg group-hover:shadow-[#FFD100]/30">
+                  <span className="text-[#050505] font-display font-bold text-lg md:text-xl">U</span>
                 </div>
               </div>
-              <span className="font-display font-bold text-xl md:text-2xl text-foreground group-hover:text-primary transition-colors">
-                ULULATO
+              
+              {/* Línea Vertical Separadora */}
+              <div className="h-8 w-px bg-white/30" />
+              
+              {/* MARKET Text */}
+              <span 
+                className="font-sans font-light text-lg md:text-xl text-[#FFD100] tracking-[0.3em] uppercase"
+                style={{ letterSpacing: '0.3em' }}
+              >
+                MARKET
               </span>
             </Link>
 
@@ -72,13 +81,13 @@ export default function Navbar() {
                   className={cn(
                     'font-medium transition-all duration-300 relative py-2',
                     location === link.href
-                      ? 'text-primary'
-                      : 'text-foreground/70 hover:text-foreground'
+                      ? 'text-[#FFD100]'
+                      : 'text-white/70 hover:text-white'
                   )}
                 >
                   {link.label}
                   {location === link.href && (
-                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#FFD100] rounded-full" />
                   )}
                 </Link>
               ))}
@@ -91,7 +100,7 @@ export default function Navbar() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-foreground/70 hover:text-foreground hover:bg-white/10"
+                  className="text-white/70 hover:text-white hover:bg-white/10"
                 >
                   <Search className="w-5 h-5" />
                 </Button>
@@ -102,11 +111,11 @@ export default function Navbar() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="relative hidden md:flex text-foreground/70 hover:text-destructive hover:bg-white/10"
+                  className="relative hidden md:flex text-white/70 hover:text-[#C81D25] hover:bg-white/10"
                 >
                   <Heart className="w-5 h-5" />
                   {favCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground text-xs font-bold rounded-full flex items-center justify-center">
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#C81D25] text-white text-xs font-bold rounded-full flex items-center justify-center">
                       {favCount > 9 ? '9+' : favCount}
                     </span>
                   )}
@@ -117,12 +126,12 @@ export default function Navbar() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative text-foreground/70 hover:text-primary hover:bg-white/10"
+                className="relative text-white/70 hover:text-[#FFD100] hover:bg-white/10"
                 onClick={openNotifications}
               >
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#FFD100] text-[#050505] text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
@@ -132,12 +141,12 @@ export default function Navbar() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative text-foreground/70 hover:text-primary hover:bg-white/10"
+                className="relative text-white/70 hover:text-[#FFD100] hover:bg-white/10"
                 onClick={openCart}
               >
                 <ShoppingCart className="w-5 h-5" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs font-bold rounded-full flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#FFD100] text-[#050505] text-xs font-bold rounded-full flex items-center justify-center">
                     {cartCount > 9 ? '9+' : cartCount}
                   </span>
                 )}
@@ -148,19 +157,19 @@ export default function Navbar() {
                 <Link href="/profile">
                   <Button
                     variant="ghost"
-                    className="hidden md:flex items-center gap-2 text-foreground/70 hover:text-foreground hover:bg-white/10"
+                    className="hidden md:flex items-center gap-2 text-white/70 hover:text-white hover:bg-white/10"
                   >
                     <img
                       src={user?.avatar}
                       alt={user?.name}
-                      className="w-8 h-8 rounded-full object-cover border-2 border-primary/50"
+                      className="w-8 h-8 rounded-full object-cover border-2 border-[#FFD100]/50"
                     />
                     <span className="font-medium">{user?.name}</span>
                   </Button>
                 </Link>
               ) : (
                 <Link href="/auth/login">
-                  <Button className="hidden md:flex btn-brand">
+                  <Button className="hidden md:flex bg-[#FFD100] text-[#050505] hover:bg-[#FFD100]/90 font-semibold">
                     <User className="w-4 h-4 mr-2" />
                     Ingresar
                   </Button>
@@ -171,7 +180,7 @@ export default function Navbar() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="md:hidden text-foreground/70 hover:text-foreground hover:bg-white/10"
+                className="md:hidden text-white/70 hover:text-white hover:bg-white/10"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               >
                 {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -183,7 +192,7 @@ export default function Navbar() {
         {/* Mobile Menu */}
         <div
           className={cn(
-            'md:hidden absolute top-full left-0 right-0 backdrop-blur-xl bg-background/95 border-b border-white/10 transition-all duration-300 overflow-hidden',
+            'md:hidden absolute top-full left-0 right-0 backdrop-blur-xl bg-[#050505]/95 border-b border-white/10 transition-all duration-300 overflow-hidden',
             isMobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
           )}
         >
@@ -196,8 +205,8 @@ export default function Navbar() {
                 className={cn(
                   'block py-3 px-4 rounded-lg font-medium transition-all',
                   location === link.href
-                    ? 'bg-primary/20 text-primary'
-                    : 'text-foreground/70 hover:bg-white/10 hover:text-foreground'
+                    ? 'bg-[#FFD100]/20 text-[#FFD100]'
+                    : 'text-white/70 hover:bg-white/10 hover:text-white'
                 )}
               >
                 {link.label}
@@ -208,14 +217,14 @@ export default function Navbar() {
             <Link
               href="/favorites"
               onClick={() => setIsMobileMenuOpen(false)}
-              className="flex items-center justify-between py-3 px-4 rounded-lg text-foreground/70 hover:bg-white/10"
+              className="flex items-center justify-between py-3 px-4 rounded-lg text-white/70 hover:bg-white/10"
             >
               <span className="flex items-center gap-2">
                 <Heart className="w-5 h-5" />
                 Favoritos
               </span>
               {favCount > 0 && (
-                <span className="w-6 h-6 bg-destructive text-destructive-foreground text-xs font-bold rounded-full flex items-center justify-center">
+                <span className="w-6 h-6 bg-[#C81D25] text-white text-xs font-bold rounded-full flex items-center justify-center">
                   {favCount}
                 </span>
               )}
@@ -226,16 +235,16 @@ export default function Navbar() {
                 <Link
                   href="/profile"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 py-3 px-4 rounded-lg text-foreground/70 hover:bg-white/10"
+                  className="flex items-center gap-3 py-3 px-4 rounded-lg text-white/70 hover:bg-white/10"
                 >
                   <img
                     src={user?.avatar}
                     alt={user?.name}
-                    className="w-10 h-10 rounded-full object-cover border-2 border-primary/50"
+                    className="w-10 h-10 rounded-full object-cover border-2 border-[#FFD100]/50"
                   />
                   <div>
-                    <p className="font-medium text-foreground">{user?.name}</p>
-                    <p className="text-sm text-muted-foreground">Ver perfil</p>
+                    <p className="font-medium text-white">{user?.name}</p>
+                    <p className="text-sm text-white/50">Ver perfil</p>
                   </div>
                 </Link>
               ) : (
@@ -244,7 +253,7 @@ export default function Navbar() {
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="block"
                 >
-                  <Button className="w-full btn-brand">
+                  <Button className="w-full bg-[#FFD100] text-[#050505] hover:bg-[#FFD100]/90 font-semibold">
                     <User className="w-4 h-4 mr-2" />
                     Ingresar
                   </Button>
