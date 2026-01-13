@@ -5,6 +5,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback, Suspense, lazy } from 'react';
+import gsap from 'gsap';
 import { useParams, Link } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -290,6 +291,8 @@ export default function ProductDetail() {
   const [selectedImage, setSelectedImage] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
+  const viewerContainerRef = useRef<HTMLDivElement>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   
   const { addItem, openCart } = useCartStore();
   const { isFavorite, addFavorite, removeFavorite } = useFavoritesStore();
@@ -354,6 +357,78 @@ export default function ProductDetail() {
     window.location.href = '/checkout';
   };
 
+  // Handle view mode change with GSAP animation
+  const handleViewModeChange = useCallback((newMode: '2d' | '3d') => {
+    if (newMode === viewMode || isTransitioning) return;
+    
+    setIsTransitioning(true);
+    
+    const container = viewerContainerRef.current;
+    if (!container) {
+      setViewMode(newMode);
+      setIsTransitioning(false);
+      return;
+    }
+
+    // Create timeline for smooth transition
+    const tl = gsap.timeline({
+      onComplete: () => {
+        setIsTransitioning(false);
+      }
+    });
+
+    // Animate out
+    tl.to(container, {
+      opacity: 0,
+      scale: 0.95,
+      rotateY: newMode === '3d' ? -15 : 15,
+      duration: 0.3,
+      ease: 'power2.in',
+      onComplete: () => {
+        setViewMode(newMode);
+      }
+    });
+
+    // Animate in
+    tl.fromTo(container, 
+      {
+        opacity: 0,
+        scale: 1.05,
+        rotateY: newMode === '3d' ? 15 : -15,
+      },
+      {
+        opacity: 1,
+        scale: 1,
+        rotateY: 0,
+        duration: 0.4,
+        ease: 'power2.out',
+      }
+    );
+
+    // Add subtle glow effect for 3D mode
+    if (newMode === '3d') {
+      tl.fromTo(container,
+        { boxShadow: '0 0 0 rgba(255, 209, 0, 0)' },
+        { 
+          boxShadow: '0 0 30px rgba(255, 209, 0, 0.3)',
+          duration: 0.3,
+          ease: 'power2.out'
+        },
+        '-=0.2'
+      );
+      tl.to(container, {
+        boxShadow: '0 0 15px rgba(255, 209, 0, 0.15)',
+        duration: 0.5,
+        ease: 'power2.inOut'
+      });
+    } else {
+      tl.to(container, {
+        boxShadow: '0 0 0 rgba(255, 209, 0, 0)',
+        duration: 0.3
+      }, '-=0.3');
+    }
+  }, [viewMode, isTransitioning]);
+
   const handleShare = async () => {
     const url = window.location.href;
     if (navigator.share) {
@@ -411,7 +486,8 @@ export default function ProductDetail() {
                     'h-9 px-4 gap-2 rounded-md transition-all',
                     viewMode === '2d' && 'bg-primary text-primary-foreground hover:bg-primary/90'
                   )}
-                  onClick={() => setViewMode('2d')}
+                  onClick={() => handleViewModeChange('2d')}
+                  disabled={isTransitioning}
                 >
                   <ImageIcon className="w-4 h-4" />
                   Galería
@@ -423,7 +499,8 @@ export default function ProductDetail() {
                     'h-9 px-4 gap-2 rounded-md transition-all',
                     viewMode === '3d' && 'bg-primary text-primary-foreground hover:bg-primary/90'
                   )}
-                  onClick={() => setViewMode('3d')}
+                  onClick={() => handleViewModeChange('3d')}
+                  disabled={isTransitioning}
                 >
                   <Box className="w-4 h-4" />
                   Vista 3D
@@ -438,7 +515,11 @@ export default function ProductDetail() {
             </div>
 
             {/* Main Viewer */}
-            <div className="relative aspect-square rounded-2xl overflow-hidden glass-card border border-white/10">
+            <div 
+              ref={viewerContainerRef}
+              className="relative aspect-square rounded-2xl overflow-hidden glass-card border border-white/10"
+              style={{ perspective: '1000px' }}
+            >
               {viewMode === '2d' ? (
                 <>
                   <ImageViewer 
