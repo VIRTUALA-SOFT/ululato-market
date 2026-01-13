@@ -49,17 +49,19 @@ export default function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 lg:gap-12">
           {/* Brand Column */}
           <div className="col-span-2 md:col-span-4 lg:col-span-1">
-            <Link href="/" className="flex items-center gap-3 mb-4">
-              {/* Logo U */}
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary via-primary/80 to-secondary flex items-center justify-center">
-                <span className="text-primary-foreground font-display font-bold text-lg">U</span>
-              </div>
-              {/* Vertical Divider */}
-              <div className="w-px h-6 bg-white/30" />
+            <Link href="/" className="flex items-center gap-4 mb-4">
+              {/* Logo Plumas */}
+              <img 
+                src="/images/logo-ululato.png" 
+                alt="ULULATO" 
+                className="w-10 h-10 object-contain"
+              />
+              {/* Vertical Divider - Más visible */}
+              <div className="w-[2px] h-7 bg-white/40 rounded-full" />
               {/* MARKET Text */}
               <span 
-                className="text-[#FFD100] font-light tracking-[0.25em] text-sm"
-                style={{ fontFamily: 'Inter, sans-serif' }}
+                className="text-[#FFD100] font-extralight tracking-[0.35em] text-sm uppercase"
+                style={{ fontFamily: 'Inter, sans-serif', letterSpacing: '0.35em' }}
               >
                 MARKET
               </span>

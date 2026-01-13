@@ -52,11 +52,19 @@ export function LoginPage() {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md space-y-8">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 justify-center mb-8">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary via-primary/80 to-secondary flex items-center justify-center">
-              <span className="text-primary-foreground font-display font-bold text-xl">U</span>
-            </div>
-            <span className="font-display font-bold text-2xl">ULULATO</span>
+          <Link href="/" className="flex items-center gap-4 justify-center mb-8">
+            <img 
+              src="/images/logo-ululato.png" 
+              alt="ULULATO" 
+              className="w-12 h-12 object-contain"
+            />
+            <div className="w-[2px] h-8 bg-white/40 rounded-full" />
+            <span 
+              className="text-[#FFD100] font-extralight tracking-[0.35em] text-xl uppercase"
+              style={{ fontFamily: 'Inter, sans-serif', letterSpacing: '0.35em' }}
+            >
+              MARKET
+            </span>
           </Link>
 
           {/* Header */}
@@ -267,11 +275,19 @@ export function RegisterPage() {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md space-y-8">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 justify-center mb-8">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary via-primary/80 to-secondary flex items-center justify-center">
-              <span className="text-primary-foreground font-display font-bold text-xl">U</span>
-            </div>
-            <span className="font-display font-bold text-2xl">ULULATO</span>
+          <Link href="/" className="flex items-center gap-4 justify-center mb-8">
+            <img 
+              src="/images/logo-ululato.png" 
+              alt="ULULATO" 
+              className="w-12 h-12 object-contain"
+            />
+            <div className="w-[2px] h-8 bg-white/40 rounded-full" />
+            <span 
+              className="text-[#FFD100] font-extralight tracking-[0.35em] text-xl uppercase"
+              style={{ fontFamily: 'Inter, sans-serif', letterSpacing: '0.35em' }}
+            >
+              MARKET
+            </span>
           </Link>
 
           {/* Header */}

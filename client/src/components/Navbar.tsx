@@ -51,22 +51,24 @@ export default function Navbar() {
       >
         <div className="container mx-auto">
           <div className="flex items-center justify-between h-16 md:h-20">
-            {/* Logo: U + Línea Vertical + MARKET */}
-            <Link href="/" className="flex items-center gap-3 group">
-              {/* Logo U */}
+            {/* Logo: Plumas + Línea Vertical + MARKET */}
+            <Link href="/" className="flex items-center gap-4 group">
+              {/* Logo Plumas */}
               <div className="relative">
-                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-[#FFD100] via-[#FFD100]/80 to-[#C81D25] flex items-center justify-center transition-all duration-300 group-hover:shadow-lg group-hover:shadow-[#FFD100]/30">
-                  <span className="text-[#050505] font-display font-bold text-lg md:text-xl">U</span>
-                </div>
+                <img 
+                  src="/images/logo-ululato.png" 
+                  alt="ULULATO" 
+                  className="w-10 h-10 md:w-12 md:h-12 object-contain transition-all duration-300 group-hover:scale-110"
+                />
               </div>
               
-              {/* Línea Vertical Separadora */}
-              <div className="h-8 w-px bg-white/30" />
+              {/* Línea Vertical Separadora - Más visible */}
+              <div className="h-8 w-[2px] bg-white/40 rounded-full" />
               
               {/* MARKET Text */}
               <span 
-                className="font-sans font-light text-lg md:text-xl text-[#FFD100] tracking-[0.3em] uppercase"
-                style={{ letterSpacing: '0.3em' }}
+                className="font-sans font-extralight text-lg md:text-xl text-[#FFD100] tracking-[0.35em] uppercase"
+                style={{ letterSpacing: '0.35em' }}
               >
                 MARKET
               </span>

@@ -18,9 +18,11 @@ export default function NotFound() {
             404
           </h1>
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary via-primary/80 to-secondary flex items-center justify-center animate-pulse-glow">
-              <span className="text-primary-foreground font-display font-bold text-4xl">U</span>
-            </div>
+            <img 
+              src="/images/logo-ululato.png" 
+              alt="ULULATO" 
+              className="w-24 h-24 object-contain animate-pulse"
+            />
           </div>
         </div>
 

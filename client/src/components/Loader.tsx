@@ -56,11 +56,11 @@ export default function Loader({ size = 'md', className, text }: LoaderProps) {
 
         {/* Center Logo */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-1/2 h-1/2 rounded-lg bg-gradient-to-br from-primary via-primary/80 to-secondary flex items-center justify-center animate-pulse">
-            <span className="text-primary-foreground font-display font-bold text-sm">
-              U
-            </span>
-          </div>
+          <img 
+            src="/images/logo-ululato.png" 
+            alt="ULULATO" 
+            className="w-1/2 h-1/2 object-contain animate-pulse"
+          />
         </div>
       </div>
 
