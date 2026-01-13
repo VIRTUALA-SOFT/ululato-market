@@ -1,14 +1,25 @@
 /**
  * ULULATO Marketplace Page
- * Design: Advanced search, category filters, product grid
+ * Design: Advanced search, category filters, price range, product grid
  * Style: "Neon Ancestral" - Cyberpunk Indígena
  */
 
-import { useState, useMemo } from 'react';
-import { useSearch } from 'wouter';
-import { Search, SlidersHorizontal, X, Grid3X3, LayoutList, ChevronDown } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearch, Link } from 'wouter';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Search, 
+  SlidersHorizontal, 
+  X, 
+  Grid3X3, 
+  LayoutList, 
+  Scale,
+  History,
+  ChevronRight,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
 import {
   Select,
   SelectContent,
@@ -19,10 +30,219 @@ import {
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import ProductCard from '@/components/ProductCard';
-import { products, categories, ProductCategory } from '@/lib/mockDb';
+import { products, categories, ProductCategory, formatPrice, getProductById } from '@/lib/mockDb';
+import { useRecentlyViewedStore, useCompareStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 type SortOption = 'featured' | 'price-asc' | 'price-desc' | 'rating' | 'newest';
+
+// Get min and max prices from products
+const allPrices = products.map(p => p.price);
+const MIN_PRICE = Math.min(...allPrices);
+const MAX_PRICE = Math.max(...allPrices);
+
+// Compare Floating Panel Component
+function ComparePanel() {
+  const { compareIds, removeFromCompare, clearCompare, openComparePanel, isOpen, closeComparePanel } = useCompareStore();
+  
+  const compareProducts = compareIds.map(id => getProductById(id)).filter(Boolean);
+  
+  if (compareIds.length === 0) return null;
+  
+  return (
+    <>
+      {/* Floating Button */}
+      <motion.button
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0, opacity: 0 }}
+        onClick={openComparePanel}
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-3 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:shadow-primary/50 transition-shadow"
+      >
+        <Scale className="w-5 h-5" />
+        <span className="font-medium">Comparar ({compareIds.length})</span>
+      </motion.button>
+
+      {/* Compare Panel Modal */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 flex items-end md:items-center justify-center p-4"
+            onClick={closeComparePanel}
+          >
+            <motion.div
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              className="w-full max-w-5xl max-h-[80vh] overflow-auto rounded-2xl glass-card border border-white/10 p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="font-display text-2xl font-bold">Comparar Productos</h2>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={clearCompare}>
+                    Limpiar
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={closeComparePanel}>
+                    <X className="w-5 h-5" />
+                  </Button>
+                </div>
+              </div>
+
+              {compareProducts.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[600px]">
+                    <thead>
+                      <tr>
+                        <th className="text-left p-3 border-b border-white/10 w-32">Característica</th>
+                        {compareProducts.map((product) => (
+                          <th key={product!.id} className="p-3 border-b border-white/10">
+                            <div className="relative">
+                              <button
+                                onClick={() => removeFromCompare(product!.id)}
+                                className="absolute -top-1 -right-1 p-1 rounded-full bg-destructive/80 hover:bg-destructive transition-colors"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                              <img
+                                src={product!.images[0]}
+                                alt={product!.title}
+                                className="w-24 h-24 object-cover rounded-lg mx-auto mb-2"
+                              />
+                              <Link href={`/product/${product!.slug}`}>
+                                <p className="font-medium text-sm hover:text-primary transition-colors line-clamp-2">
+                                  {product!.title}
+                                </p>
+                              </Link>
+                            </div>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="p-3 border-b border-white/10 text-muted-foreground">Precio</td>
+                        {compareProducts.map((product) => (
+                          <td key={product!.id} className="p-3 border-b border-white/10 text-center">
+                            <span className="font-bold text-primary">{formatPrice(product!.price)}</span>
+                            {product!.compareAtPrice && (
+                              <span className="block text-sm text-muted-foreground line-through">
+                                {formatPrice(product!.compareAtPrice)}
+                              </span>
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <td className="p-3 border-b border-white/10 text-muted-foreground">Categoría</td>
+                        {compareProducts.map((product) => (
+                          <td key={product!.id} className="p-3 border-b border-white/10 text-center">
+                            {product!.category}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <td className="p-3 border-b border-white/10 text-muted-foreground">Calificación</td>
+                        {compareProducts.map((product) => (
+                          <td key={product!.id} className="p-3 border-b border-white/10 text-center">
+                            <span className="text-primary">★</span> {product!.rating} ({product!.reviewCount})
+                          </td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <td className="p-3 border-b border-white/10 text-muted-foreground">Vendidos</td>
+                        {compareProducts.map((product) => (
+                          <td key={product!.id} className="p-3 border-b border-white/10 text-center">
+                            {product!.sold}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <td className="p-3 border-b border-white/10 text-muted-foreground">Vendedor</td>
+                        {compareProducts.map((product) => (
+                          <td key={product!.id} className="p-3 border-b border-white/10 text-center">
+                            <span className="text-xs px-2 py-1 rounded-full bg-primary/20 text-primary">
+                              {product!.storeLevel}
+                            </span>
+                            <p className="text-sm mt-1">{product!.storeName}</p>
+                          </td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <td className="p-3 text-muted-foreground">Stock</td>
+                        {compareProducts.map((product) => (
+                          <td key={product!.id} className="p-3 text-center">
+                            <span className={product!.stock > 5 ? 'text-green-500' : 'text-orange-500'}>
+                              {product!.stock} disponibles
+                            </span>
+                          </td>
+                        ))}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">
+                  No hay productos para comparar
+                </p>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+// Recently Viewed Section Component
+function RecentlyViewedSection() {
+  const { viewedIds } = useRecentlyViewedStore();
+  
+  const recentProducts = viewedIds
+    .map(id => getProductById(id))
+    .filter(Boolean)
+    .slice(0, 6);
+  
+  if (recentProducts.length === 0) return null;
+  
+  return (
+    <section className="py-8 border-t border-white/10">
+      <div className="container">
+        <div className="flex items-center gap-3 mb-6">
+          <History className="w-5 h-5 text-primary" />
+          <h2 className="font-display text-xl font-bold">Vistos Recientemente</h2>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          {recentProducts.map((product) => (
+            <Link key={product!.id} href={`/product/${product!.slug}`}>
+              <div className="group relative rounded-xl overflow-hidden glass-card border border-white/10 hover:border-primary/30 transition-all">
+                <div className="aspect-square">
+                  <img
+                    src={product!.images[0]}
+                    alt={product!.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
+                <div className="p-3">
+                  <p className="text-sm font-medium line-clamp-1 group-hover:text-primary transition-colors">
+                    {product!.title}
+                  </p>
+                  <p className="text-sm text-primary font-bold">
+                    {formatPrice(product!.price)}
+                  </p>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export default function Market() {
   const searchString = useSearch();
@@ -34,6 +254,16 @@ export default function Market() {
   const [sortBy, setSortBy] = useState<SortOption>('featured');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
+  const [priceRange, setPriceRange] = useState<[number, number]>([MIN_PRICE, MAX_PRICE]);
+  
+  const { addToCompare, isInCompare, canAddMore } = useCompareStore();
+
+  // Update category from URL params
+  useEffect(() => {
+    if (initialCategory) {
+      setSelectedCategory(initialCategory);
+    }
+  }, [initialCategory]);
 
   // Filter and sort products
   const filteredProducts = useMemo(() => {
@@ -55,6 +285,11 @@ export default function Market() {
       result = result.filter((p) => p.category === selectedCategory);
     }
 
+    // Price range filter
+    result = result.filter(
+      (p) => p.price >= priceRange[0] && p.price <= priceRange[1]
+    );
+
     // Sort
     switch (sortBy) {
       case 'price-asc':
@@ -75,15 +310,30 @@ export default function Market() {
     }
 
     return result;
-  }, [searchQuery, selectedCategory, sortBy]);
+  }, [searchQuery, selectedCategory, sortBy, priceRange]);
 
   const clearFilters = () => {
     setSearchQuery('');
     setSelectedCategory(null);
     setSortBy('featured');
+    setPriceRange([MIN_PRICE, MAX_PRICE]);
   };
 
-  const hasActiveFilters = searchQuery || selectedCategory || sortBy !== 'featured';
+  const hasActiveFilters = searchQuery || selectedCategory || sortBy !== 'featured' || 
+    priceRange[0] !== MIN_PRICE || priceRange[1] !== MAX_PRICE;
+
+  const handleAddToCompare = (productId: string) => {
+    if (isInCompare(productId)) {
+      toast.info('Este producto ya está en la comparación');
+      return;
+    }
+    if (!canAddMore()) {
+      toast.error('Máximo 4 productos para comparar');
+      return;
+    }
+    addToCompare(productId);
+    toast.success('Producto agregado a comparación');
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -225,7 +475,7 @@ export default function Market() {
           <div
             className={cn(
               'md:hidden overflow-hidden transition-all duration-300',
-              showFilters ? 'max-h-96 mt-4' : 'max-h-0'
+              showFilters ? 'max-h-[500px] mt-4' : 'max-h-0'
             )}
           >
             <div className="space-y-4 p-4 rounded-xl bg-white/5 border border-white/10">
@@ -248,6 +498,21 @@ export default function Market() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Price Range */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  Rango de precio: {formatPrice(priceRange[0])} - {formatPrice(priceRange[1])}
+                </label>
+                <Slider
+                  value={priceRange}
+                  onValueChange={(value) => setPriceRange(value as [number, number])}
+                  min={MIN_PRICE}
+                  max={MAX_PRICE}
+                  step={5000}
+                  className="mt-4"
+                />
               </div>
 
               {/* Sort Select */}
@@ -283,39 +548,59 @@ export default function Market() {
         </div>
       </section>
 
-      {/* Category Pills */}
-      <section className="py-6 overflow-x-auto">
+      {/* Category Pills + Price Filter */}
+      <section className="py-6">
         <div className="container">
-          <div className="flex items-center gap-3 pb-2">
-            <Button
-              variant={selectedCategory === null ? 'default' : 'outline'}
-              size="sm"
-              className={cn(
-                'rounded-full whitespace-nowrap',
-                selectedCategory === null
-                  ? 'bg-primary text-primary-foreground'
-                  : 'border-white/10 hover:bg-white/10'
-              )}
-              onClick={() => setSelectedCategory(null)}
-            >
-              Todos
-            </Button>
-            {categories.map((cat) => (
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+            {/* Category Pills */}
+            <div className="flex items-center gap-3 overflow-x-auto pb-2 lg:pb-0 flex-1">
               <Button
-                key={cat.name}
-                variant={selectedCategory === cat.name ? 'default' : 'outline'}
+                variant={selectedCategory === null ? 'default' : 'outline'}
                 size="sm"
                 className={cn(
                   'rounded-full whitespace-nowrap',
-                  selectedCategory === cat.name
+                  selectedCategory === null
                     ? 'bg-primary text-primary-foreground'
                     : 'border-white/10 hover:bg-white/10'
                 )}
-                onClick={() => setSelectedCategory(cat.name)}
+                onClick={() => setSelectedCategory(null)}
               >
-                {cat.icon} {cat.name}
+                Todos
               </Button>
-            ))}
+              {categories.map((cat) => (
+                <Button
+                  key={cat.name}
+                  variant={selectedCategory === cat.name ? 'default' : 'outline'}
+                  size="sm"
+                  className={cn(
+                    'rounded-full whitespace-nowrap',
+                    selectedCategory === cat.name
+                      ? 'bg-primary text-primary-foreground'
+                      : 'border-white/10 hover:bg-white/10'
+                  )}
+                  onClick={() => setSelectedCategory(cat.name)}
+                >
+                  {cat.icon} {cat.name}
+                </Button>
+              ))}
+            </div>
+
+            {/* Desktop Price Range */}
+            <div className="hidden lg:flex items-center gap-4 min-w-[350px]">
+              <span className="text-sm text-muted-foreground whitespace-nowrap">Precio:</span>
+              <div className="flex-1">
+                <Slider
+                  value={priceRange}
+                  onValueChange={(value) => setPriceRange(value as [number, number])}
+                  min={MIN_PRICE}
+                  max={MAX_PRICE}
+                  step={5000}
+                />
+              </div>
+              <span className="text-sm font-medium whitespace-nowrap min-w-[180px] text-right">
+                {formatPrice(priceRange[0])} - {formatPrice(priceRange[1])}
+              </span>
+            </div>
           </div>
         </div>
       </section>
@@ -341,7 +626,12 @@ export default function Market() {
               )}
             >
               {filteredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard 
+                  key={product.id} 
+                  product={product} 
+                  onCompare={() => handleAddToCompare(product.id)}
+                  showCompare
+                />
               ))}
             </div>
           ) : (
@@ -362,6 +652,12 @@ export default function Market() {
           )}
         </div>
       </section>
+
+      {/* Recently Viewed Section */}
+      <RecentlyViewedSection />
+
+      {/* Compare Panel */}
+      <ComparePanel />
 
       <Footer />
     </div>

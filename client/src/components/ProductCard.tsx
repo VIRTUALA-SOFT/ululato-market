@@ -6,25 +6,29 @@
 
 import { useState, memo } from 'react';
 import { Link } from 'wouter';
-import { Heart, ShoppingCart, Star, Award } from 'lucide-react';
+import { Heart, ShoppingCart, Star, Award, Scale } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Product, formatPrice } from '@/lib/mockDb';
-import { useCartStore, useFavoritesStore } from '@/lib/store';
+import { useCartStore, useFavoritesStore, useCompareStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-interface ProductCardProps {
+export interface ProductCardProps {
   product: Product;
   featured?: boolean;
+  showCompare?: boolean;
+  onCompare?: () => void;
 }
 
-function ProductCard({ product, featured = false }: ProductCardProps) {
+function ProductCard({ product, featured = false, showCompare = false, onCompare }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const { addItem, openCart } = useCartStore();
   const { isFavorite, toggleFavorite } = useFavoritesStore();
+  const { isInCompare } = useCompareStore();
   
   const isLiked = isFavorite(product.id);
+  const inCompare = isInCompare(product.id);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -48,9 +52,17 @@ function ProductCard({ product, featured = false }: ProductCardProps) {
     });
   };
 
+  const handleCompare = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onCompare) {
+      onCompare();
+    }
+  };
+
   const getLevelBadge = (level: string) => {
     const badges: Record<string, { color: string; icon: boolean }> = {
-      'MercadoLider': { color: 'bg-primary text-primary-foreground', icon: true },
+      'TejedorLider': { color: 'bg-primary text-primary-foreground', icon: true },
       'Platinum': { color: 'bg-gradient-to-r from-slate-300 to-slate-400 text-slate-900', icon: true },
       'Gold': { color: 'bg-gradient-to-r from-yellow-500 to-amber-500 text-amber-900', icon: true },
       'Emprendedor': { color: 'bg-secondary text-secondary-foreground', icon: false },
@@ -112,20 +124,41 @@ function ProductCard({ product, featured = false }: ProductCardProps) {
               </span>
             )}
 
-            {/* Like Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn(
-                'ml-auto w-9 h-9 rounded-full backdrop-blur-md transition-all',
-                isLiked
-                  ? 'bg-destructive/20 text-destructive'
-                  : 'bg-black/30 text-white hover:bg-destructive/20 hover:text-destructive'
+            {/* Action Buttons */}
+            <div className="ml-auto flex items-center gap-2">
+              {/* Compare Button */}
+              {showCompare && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    'w-9 h-9 rounded-full backdrop-blur-md transition-all',
+                    inCompare
+                      ? 'bg-primary/30 text-primary'
+                      : 'bg-black/30 text-white hover:bg-primary/20 hover:text-primary'
+                  )}
+                  onClick={handleCompare}
+                  title={inCompare ? 'En comparación' : 'Agregar a comparación'}
+                >
+                  <Scale className={cn('w-4 h-4', inCompare && 'fill-current')} />
+                </Button>
               )}
-              onClick={handleLike}
-            >
-              <Heart className={cn('w-4 h-4', isLiked && 'fill-current')} />
-            </Button>
+              
+              {/* Like Button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  'w-9 h-9 rounded-full backdrop-blur-md transition-all',
+                  isLiked
+                    ? 'bg-destructive/20 text-destructive'
+                    : 'bg-black/30 text-white hover:bg-destructive/20 hover:text-destructive'
+                )}
+                onClick={handleLike}
+              >
+                <Heart className={cn('w-4 h-4', isLiked && 'fill-current')} />
+              </Button>
+            </div>
           </div>
 
           {/* Quick Add Button */}

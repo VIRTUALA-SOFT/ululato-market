@@ -1,14 +1,12 @@
 /**
  * ULULATO Product Detail Page
- * Design: 2D/3D toggle viewer, product info, reviews
+ * Design: Interactive image viewer with zoom, pan and fullscreen
  * Style: "Neon Ancestral" - Cyberpunk Indígena
  */
 
-import { useState, useRef, Suspense } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'wouter';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Environment, Float, Text3D, Center } from '@react-three/drei';
-import * as THREE from 'three';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Star,
   Heart,
@@ -21,97 +19,255 @@ import {
   Award,
   ChevronRight,
   Share2,
-  Box,
-  Image as ImageIcon,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  X,
+  Move,
+  Eye,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import ProductCard from '@/components/ProductCard';
-import Loader from '@/components/Loader';
 import { getProductBySlug, getReviewsByProduct, products, formatPrice } from '@/lib/mockDb';
-import { useCartStore } from '@/lib/store';
+import { useCartStore, useFavoritesStore, useRecentlyViewedStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-// 3D Product Viewer Component
-function Product3DViewer({ imageUrl }: { imageUrl: string }) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+// Interactive Image Viewer with Zoom and Pan
+function ImageViewer({ 
+  src, 
+  alt,
+  onFullscreen 
+}: { 
+  src: string; 
+  alt: string;
+  onFullscreen: () => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [showControls, setShowControls] = useState(true);
 
-  // Load texture from product image
-  useState(() => {
-    const loader = new THREE.TextureLoader();
-    loader.load(imageUrl, (tex) => {
-      tex.wrapS = THREE.RepeatWrapping;
-      tex.wrapT = THREE.RepeatWrapping;
-      setTexture(tex);
+  const minZoom = 1;
+  const maxZoom = 4;
+  const zoomStep = 0.5;
+
+  const handleZoomIn = useCallback(() => {
+    setZoom(prev => Math.min(prev + zoomStep, maxZoom));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoom(prev => {
+      const newZoom = Math.max(prev - zoomStep, minZoom);
+      if (newZoom === 1) setPosition({ x: 0, y: 0 });
+      return newZoom;
     });
-  });
+  }, []);
 
-  useFrame((state) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y = state.clock.elapsedTime * 0.2;
+  const handleReset = useCallback(() => {
+    setZoom(1);
+    setPosition({ x: 0, y: 0 });
+  }, []);
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    if (e.deltaY < 0) {
+      handleZoomIn();
+    } else {
+      handleZoomOut();
     }
-  });
+  }, [handleZoomIn, handleZoomOut]);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (zoom > 1) {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+    }
+  }, [zoom, position]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (isDragging && zoom > 1) {
+      const newX = e.clientX - dragStart.x;
+      const newY = e.clientY - dragStart.y;
+      
+      // Limit panning based on zoom level
+      const maxPan = (zoom - 1) * 150;
+      setPosition({
+        x: Math.max(-maxPan, Math.min(maxPan, newX)),
+        y: Math.max(-maxPan, Math.min(maxPan, newY)),
+      });
+    }
+  }, [isDragging, zoom, dragStart]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  const handleDoubleClick = useCallback(() => {
+    if (zoom === 1) {
+      setZoom(2);
+    } else {
+      handleReset();
+    }
+  }, [zoom, handleReset]);
 
   return (
-    <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5}>
-      <mesh ref={meshRef} castShadow receiveShadow>
-        {/* Simplified bag/mochila shape */}
-        <cylinderGeometry args={[1, 0.8, 2, 32]} />
-        <meshStandardMaterial
-          color="#FFD100"
-          metalness={0.1}
-          roughness={0.8}
-          map={texture}
+    <div 
+      ref={containerRef}
+      className="relative w-full h-full overflow-hidden rounded-2xl bg-black/50"
+      onMouseEnter={() => setShowControls(true)}
+      onMouseLeave={() => setShowControls(true)}
+    >
+      {/* Image Container */}
+      <div
+        className={cn(
+          "w-full h-full transition-transform duration-200",
+          isDragging ? "cursor-grabbing" : zoom > 1 ? "cursor-grab" : "cursor-zoom-in"
+        )}
+        style={{
+          transform: `scale(${zoom}) translate(${position.x / zoom}px, ${position.y / zoom}px)`,
+        }}
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onDoubleClick={handleDoubleClick}
+      >
+        <img
+          src={src}
+          alt={alt}
+          className="w-full h-full object-contain select-none"
+          draggable={false}
         />
-      </mesh>
-      {/* Strap */}
-      <mesh position={[0, 1.5, 0]} rotation={[0, 0, Math.PI / 6]}>
-        <torusGeometry args={[0.8, 0.05, 16, 100, Math.PI]} />
-        <meshStandardMaterial color="#101C38" metalness={0.3} roughness={0.7} />
-      </mesh>
-    </Float>
+      </div>
+
+      {/* Zoom Controls */}
+      <AnimatePresence>
+        {showControls && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full glass-card border border-white/20 shadow-lg"
+          >
+            <button
+              onClick={handleZoomOut}
+              disabled={zoom <= minZoom}
+              className="p-2 rounded-full hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Alejar (scroll down)"
+            >
+              <ZoomOut className="w-5 h-5" />
+            </button>
+            
+            <div className="px-3 min-w-[60px] text-center">
+              <span className="text-sm font-medium">{Math.round(zoom * 100)}%</span>
+            </div>
+            
+            <button
+              onClick={handleZoomIn}
+              disabled={zoom >= maxZoom}
+              className="p-2 rounded-full hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Acercar (scroll up)"
+            >
+              <ZoomIn className="w-5 h-5" />
+            </button>
+
+            <div className="w-px h-6 bg-white/20 mx-1" />
+            
+            <button
+              onClick={handleReset}
+              className="p-2 rounded-full hover:bg-white/10 transition-colors"
+              title="Restablecer vista"
+            >
+              <RotateCcw className="w-5 h-5" />
+            </button>
+            
+            <button
+              onClick={onFullscreen}
+              className="p-2 rounded-full hover:bg-white/10 transition-colors"
+              title="Pantalla completa"
+            >
+              <Maximize2 className="w-5 h-5" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Zoom Indicator */}
+      {zoom > 1 && (
+        <div className="absolute top-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-lg glass-card border border-white/20 text-sm">
+          <Move className="w-4 h-4 text-primary" />
+          <span>Arrastra para mover</span>
+        </div>
+      )}
+
+      {/* Instructions Tooltip */}
+      {zoom === 1 && (
+        <div className="absolute top-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-lg glass-card border border-white/20 text-sm text-muted-foreground">
+          <Eye className="w-4 h-4" />
+          <span>Doble clic o scroll para zoom</span>
+        </div>
+      )}
+    </div>
   );
 }
 
-// 3D Scene
-function Scene3D({ imageUrl }: { imageUrl: string }) {
+// Fullscreen Image Modal
+function FullscreenModal({ 
+  src, 
+  alt, 
+  isOpen, 
+  onClose 
+}: { 
+  src: string; 
+  alt: string; 
+  isOpen: boolean; 
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = '';
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
   return (
-    <Canvas
-      shadows
-      camera={{ position: [0, 0, 5], fov: 50 }}
-      className="w-full h-full"
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
+      onClick={onClose}
     >
-      <color attach="background" args={['#050505']} />
-      <ambientLight intensity={0.3} />
-      <spotLight
-        position={[10, 10, 10]}
-        angle={0.15}
-        penumbra={1}
-        intensity={1}
-        castShadow
-        color="#FFD100"
-      />
-      <pointLight position={[-10, -10, -10]} intensity={0.5} color="#101C38" />
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 p-3 rounded-full glass-card border border-white/20 hover:bg-white/10 transition-colors z-10"
+      >
+        <X className="w-6 h-6" />
+      </button>
       
-      <Suspense fallback={null}>
-        <Product3DViewer imageUrl={imageUrl} />
-        <Environment preset="city" />
-      </Suspense>
-      
-      <OrbitControls
-        enablePan={false}
-        enableZoom={true}
-        minDistance={3}
-        maxDistance={8}
-        autoRotate
-        autoRotateSpeed={1}
-      />
-    </Canvas>
+      <div 
+        className="w-full h-full max-w-6xl max-h-[90vh] p-8"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <ImageViewer src={src} alt={alt} onFullscreen={onClose} />
+      </div>
+    </motion.div>
   );
 }
 
@@ -120,11 +276,19 @@ export default function ProductDetail() {
   const product = getProductBySlug(slug || '');
   
   const [quantity, setQuantity] = useState(1);
-  const [isLiked, setIsLiked] = useState(false);
-  const [viewMode, setViewMode] = useState<'2D' | '3D'>('2D');
   const [selectedImage, setSelectedImage] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   
   const { addItem, openCart } = useCartStore();
+  const { isFavorite, addFavorite, removeFavorite } = useFavoritesStore();
+  const { addToHistory } = useRecentlyViewedStore();
+
+  // Track product view
+  useEffect(() => {
+    if (product) {
+      addToHistory(product.id);
+    }
+  }, [product, addToHistory]);
 
   if (!product) {
     return (
@@ -147,6 +311,18 @@ export default function ProductDetail() {
     (p) => p.category === product.category && p.id !== product.id
   ).slice(0, 4);
 
+  const isLiked = isFavorite(product.id);
+
+  const handleToggleFavorite = () => {
+    if (isLiked) {
+      removeFavorite(product.id);
+      toast.info('Eliminado de favoritos');
+    } else {
+      addFavorite(product.id);
+      toast.success('Agregado a favoritos');
+    }
+  };
+
   const handleAddToCart = () => {
     addItem(product, quantity);
     toast.success('Producto agregado al carrito', {
@@ -161,6 +337,24 @@ export default function ProductDetail() {
   const handleBuyNow = () => {
     addItem(product, quantity);
     window.location.href = '/checkout';
+  };
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: product.title,
+          text: product.description,
+          url,
+        });
+      } catch {
+        // User cancelled
+      }
+    } else {
+      await navigator.clipboard.writeText(url);
+      toast.success('Enlace copiado al portapapeles');
+    }
   };
 
   const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price;
@@ -190,40 +384,26 @@ export default function ProductDetail() {
       {/* Product Section */}
       <section className="container py-8">
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
-          {/* Product Images/3D Viewer */}
+          {/* Product Images */}
           <div className="space-y-4">
             {/* Main Viewer */}
             <div className="relative aspect-square rounded-2xl overflow-hidden glass-card border border-white/10">
-              {viewMode === '2D' ? (
-                <img
-                  src={product.images[selectedImage]}
-                  alt={product.title}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <Scene3D imageUrl={product.images[0]} />
-              )}
-
-              {/* View Mode Toggle */}
-              <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-2 rounded-lg glass-card border border-white/10">
-                <ImageIcon className={cn('w-4 h-4', viewMode === '2D' ? 'text-primary' : 'text-muted-foreground')} />
-                <Switch
-                  checked={viewMode === '3D'}
-                  onCheckedChange={(checked) => setViewMode(checked ? '3D' : '2D')}
-                />
-                <Box className={cn('w-4 h-4', viewMode === '3D' ? 'text-primary' : 'text-muted-foreground')} />
-              </div>
+              <ImageViewer 
+                src={product.images[selectedImage]} 
+                alt={product.title}
+                onFullscreen={() => setIsFullscreen(true)}
+              />
 
               {/* Discount Badge */}
               {hasDiscount && (
-                <span className="absolute top-4 left-4 px-3 py-1 rounded-lg bg-destructive text-destructive-foreground text-sm font-bold">
+                <span className="absolute top-4 right-4 px-3 py-1 rounded-lg bg-destructive text-destructive-foreground text-sm font-bold z-10">
                   -{discountPercent}%
                 </span>
               )}
             </div>
 
-            {/* Thumbnail Gallery (2D mode only) */}
-            {viewMode === '2D' && product.images.length > 1 && (
+            {/* Thumbnail Gallery */}
+            {product.images.length > 1 && (
               <div className="flex gap-3">
                 {product.images.map((img, index) => (
                   <button
@@ -232,7 +412,7 @@ export default function ProductDetail() {
                     className={cn(
                       'w-20 h-20 rounded-lg overflow-hidden border-2 transition-all',
                       selectedImage === index
-                        ? 'border-primary'
+                        ? 'border-primary ring-2 ring-primary/30'
                         : 'border-white/10 hover:border-white/30'
                     )}
                   >
@@ -240,13 +420,6 @@ export default function ProductDetail() {
                   </button>
                 ))}
               </div>
-            )}
-
-            {/* 3D Mode Instructions */}
-            {viewMode === '3D' && (
-              <p className="text-center text-sm text-muted-foreground">
-                Arrastra para rotar • Scroll para zoom • Vista previa del "Gemelo Digital"
-              </p>
             )}
           </div>
 
@@ -306,31 +479,29 @@ export default function ProductDetail() {
             </div>
 
             {/* Description */}
-            <p className="text-muted-foreground leading-relaxed">{product.description}</p>
+            <p className="text-muted-foreground leading-relaxed">
+              {product.description}
+            </p>
 
             {/* Quantity Selector */}
             <div className="flex items-center gap-4">
               <span className="font-medium">Cantidad:</span>
-              <div className="flex items-center gap-2 p-1 rounded-lg bg-white/5 border border-white/10">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-10 w-10"
+              <div className="flex items-center gap-2 px-2 py-1 rounded-lg glass-card border border-white/10">
+                <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  className="p-2 hover:bg-white/10 rounded transition-colors"
                   disabled={quantity <= 1}
                 >
                   <Minus className="w-4 h-4" />
-                </Button>
+                </button>
                 <span className="w-12 text-center font-medium">{quantity}</span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-10 w-10"
+                <button
                   onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                  className="p-2 hover:bg-white/10 rounded transition-colors"
                   disabled={quantity >= product.stock}
                 >
                   <Plus className="w-4 h-4" />
-                </Button>
+                </button>
               </div>
               <span className="text-sm text-muted-foreground">
                 {product.stock} disponibles
@@ -338,73 +509,82 @@ export default function ProductDetail() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex gap-4">
               <Button
-                className="flex-1 btn-brand text-lg py-6 gap-2"
                 onClick={handleAddToCart}
+                className="flex-1 btn-brand gap-2"
+                size="lg"
               >
                 <ShoppingCart className="w-5 h-5" />
                 Agregar al Carrito
               </Button>
               <Button
-                variant="outline"
-                className="flex-1 text-lg py-6 border-primary/50 text-primary hover:bg-primary/10"
                 onClick={handleBuyNow}
+                variant="outline"
+                className="flex-1 border-primary text-primary hover:bg-primary/10"
+                size="lg"
               >
                 Comprar Ahora
               </Button>
             </div>
 
             {/* Secondary Actions */}
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
+            <div className="flex items-center gap-6 pt-2">
+              <button
+                onClick={handleToggleFavorite}
                 className={cn(
-                  'gap-2',
-                  isLiked ? 'text-destructive' : 'text-muted-foreground hover:text-destructive'
+                  'flex items-center gap-2 text-sm transition-colors',
+                  isLiked ? 'text-red-500' : 'text-muted-foreground hover:text-foreground'
                 )}
-                onClick={() => {
-                  setIsLiked(!isLiked);
-                  toast.success(isLiked ? 'Eliminado de favoritos' : 'Agregado a favoritos');
-                }}
               >
                 <Heart className={cn('w-5 h-5', isLiked && 'fill-current')} />
                 {isLiked ? 'En favoritos' : 'Agregar a favoritos'}
-              </Button>
-              <Button
-                variant="ghost"
-                className="gap-2 text-muted-foreground hover:text-foreground"
-                onClick={() => {
-                  navigator.clipboard.writeText(window.location.href);
-                  toast.success('Enlace copiado al portapapeles');
-                }}
+              </button>
+              <button
+                onClick={handleShare}
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Share2 className="w-5 h-5" />
                 Compartir
-              </Button>
+              </button>
             </div>
 
-            {/* Features */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6 border-t border-white/10">
-              <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5">
-                <Truck className="w-6 h-6 text-primary" />
+            {/* Trust Badges */}
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Truck className="w-5 h-5 text-primary" />
+                </div>
                 <div>
-                  <p className="font-medium text-sm">Envío Nacional</p>
-                  <p className="text-xs text-muted-foreground">3-5 días hábiles</p>
+                  <p className="text-sm font-medium">Envío Nacional</p>
+                  <p className="text-xs text-muted-foreground">3-7 días hábiles</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5">
-                <Shield className="w-6 h-6 text-primary" />
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Shield className="w-5 h-5 text-primary" />
+                </div>
                 <div>
-                  <p className="font-medium text-sm">Compra Protegida</p>
-                  <p className="text-xs text-muted-foreground">100% seguro</p>
+                  <p className="text-sm font-medium">Compra Protegida</p>
+                  <p className="text-xs text-muted-foreground">Garantía de devolución</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5">
-                <RotateCcw className="w-6 h-6 text-primary" />
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <RotateCcw className="w-5 h-5 text-primary" />
+                </div>
                 <div>
-                  <p className="font-medium text-sm">Devoluciones</p>
-                  <p className="text-xs text-muted-foreground">30 días</p>
+                  <p className="text-sm font-medium">Devolución Gratis</p>
+                  <p className="text-xs text-muted-foreground">30 días para devolver</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Award className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Artesanía Certificada</p>
+                  <p className="text-xs text-muted-foreground">100% auténtico</p>
                 </div>
               </div>
             </div>
@@ -415,31 +595,69 @@ export default function ProductDetail() {
       {/* Tabs Section */}
       <section className="container py-12">
         <Tabs defaultValue="description" className="w-full">
-          <TabsList className="w-full justify-start bg-white/5 border border-white/10 p-1 rounded-xl">
-            <TabsTrigger value="description" className="rounded-lg">Descripción</TabsTrigger>
-            <TabsTrigger value="reviews" className="rounded-lg">
+          <TabsList className="w-full justify-start border-b border-white/10 rounded-none bg-transparent p-0 mb-8">
+            <TabsTrigger
+              value="description"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3"
+            >
+              Descripción
+            </TabsTrigger>
+            <TabsTrigger
+              value="reviews"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3"
+            >
               Reseñas ({reviews.length})
             </TabsTrigger>
-            <TabsTrigger value="shipping" className="rounded-lg">Envío</TabsTrigger>
+            <TabsTrigger
+              value="shipping"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3"
+            >
+              Envío y Devoluciones
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="description" className="mt-6">
+          <TabsContent value="description" className="space-y-6">
             <div className="prose prose-invert max-w-none">
-              <p className="text-muted-foreground leading-relaxed">{product.description}</p>
-              <h3 className="font-display text-xl font-semibold mt-6 mb-4 text-foreground">Características</h3>
-              <ul className="space-y-2 text-muted-foreground">
-                <li>Hecho a mano por artesanos colombianos</li>
-                <li>Materiales 100% naturales y sostenibles</li>
-                <li>Diseño único con patrones tradicionales</li>
-                <li>Certificado de autenticidad incluido</li>
+              <p className="text-lg leading-relaxed">{product.description}</p>
+              
+              <h3 className="font-display text-xl font-bold mt-8 mb-4">Características</h3>
+              <ul className="space-y-2">
+                <li className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary" />
+                  Hecho a mano por artesanos colombianos
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary" />
+                  Materiales 100% naturales y sostenibles
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary" />
+                  Certificado de autenticidad incluido
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary" />
+                  Comercio justo - Apoyo directo a comunidades
+                </li>
               </ul>
+
+              <h3 className="font-display text-xl font-bold mt-8 mb-4">Etiquetas</h3>
+              <div className="flex flex-wrap gap-2">
+                {product.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-sm"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="reviews" className="mt-6">
-            <div className="space-y-6">
-              {reviews.length > 0 ? (
-                reviews.map((review) => (
+          <TabsContent value="reviews" className="space-y-6">
+            {reviews.length > 0 ? (
+              <div className="space-y-6">
+                {reviews.map((review) => (
                   <div
                     key={review.id}
                     className="p-6 rounded-xl glass-card border border-white/10"
@@ -451,56 +669,68 @@ export default function ProductDetail() {
                         className="w-12 h-12 rounded-full object-cover"
                       />
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="font-medium">{review.userName}</span>
-                          <div className="flex items-center gap-1">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={cn(
-                                  'w-4 h-4',
-                                  i < review.rating
-                                    ? 'fill-primary text-primary'
-                                    : 'text-muted-foreground'
-                                )}
-                              />
-                            ))}
-                          </div>
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-medium">{review.userName}</h4>
+                          <span className="text-sm text-muted-foreground">
+                            {review.createdAt.toLocaleDateString('es-CO')}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 mb-3">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={cn(
+                                'w-4 h-4',
+                                i < review.rating
+                                  ? 'fill-primary text-primary'
+                                  : 'text-muted-foreground'
+                              )}
+                            />
+                          ))}
                         </div>
                         <p className="text-muted-foreground">{review.comment}</p>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {new Date(review.createdAt).toLocaleDateString('es-CO', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })}
-                        </p>
                       </div>
                     </div>
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">Este producto aún no tiene reseñas.</p>
-                </div>
-              )}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">
+                  Este producto aún no tiene reseñas. ¡Sé el primero en opinar!
+                </p>
+              </div>
+            )}
           </TabsContent>
 
-          <TabsContent value="shipping" className="mt-6">
-            <div className="prose prose-invert max-w-none">
-              <h3 className="font-display text-xl font-semibold mb-4 text-foreground">Información de Envío</h3>
-              <ul className="space-y-2 text-muted-foreground">
-                <li>Envío nacional a todas las ciudades de Colombia</li>
-                <li>Tiempo de entrega: 3-5 días hábiles</li>
-                <li>Envío gratis en compras mayores a $200.000</li>
-                <li>Seguimiento en tiempo real de tu pedido</li>
-              </ul>
-              <h3 className="font-display text-xl font-semibold mt-6 mb-4 text-foreground">Política de Devoluciones</h3>
-              <p className="text-muted-foreground">
-                Tienes 30 días para devolver tu producto si no estás satisfecho. 
-                El producto debe estar en su empaque original y sin usar.
-              </p>
+          <TabsContent value="shipping" className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-8">
+              <div className="p-6 rounded-xl glass-card border border-white/10">
+                <h3 className="font-display text-xl font-bold mb-4 flex items-center gap-2">
+                  <Truck className="w-5 h-5 text-primary" />
+                  Información de Envío
+                </h3>
+                <ul className="space-y-3 text-muted-foreground">
+                  <li>• Envío nacional a toda Colombia</li>
+                  <li>• Tiempo de entrega: 3-7 días hábiles</li>
+                  <li>• Envío gratis en compras mayores a $200.000</li>
+                  <li>• Seguimiento en tiempo real de tu pedido</li>
+                  <li>• Empaque especial para artesanías</li>
+                </ul>
+              </div>
+              <div className="p-6 rounded-xl glass-card border border-white/10">
+                <h3 className="font-display text-xl font-bold mb-4 flex items-center gap-2">
+                  <RotateCcw className="w-5 h-5 text-primary" />
+                  Política de Devoluciones
+                </h3>
+                <ul className="space-y-3 text-muted-foreground">
+                  <li>• 30 días para solicitar devolución</li>
+                  <li>• Producto debe estar en condiciones originales</li>
+                  <li>• Devolución gratuita por defectos</li>
+                  <li>• Reembolso en 5-10 días hábiles</li>
+                  <li>• Soporte al cliente 24/7</li>
+                </ul>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
@@ -508,17 +738,29 @@ export default function ProductDetail() {
 
       {/* Related Products */}
       {relatedProducts.length > 0 && (
-        <section className="container py-12">
+        <section className="container py-12 border-t border-white/10">
           <h2 className="font-display text-2xl font-bold mb-8">
-            Productos <span className="text-primary">Relacionados</span>
+            Productos Relacionados
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {relatedProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {relatedProducts.map((relatedProduct) => (
+              <ProductCard key={relatedProduct.id} product={relatedProduct} />
             ))}
           </div>
         </section>
       )}
+
+      {/* Fullscreen Modal */}
+      <AnimatePresence>
+        {isFullscreen && (
+          <FullscreenModal
+            src={product.images[selectedImage]}
+            alt={product.title}
+            isOpen={isFullscreen}
+            onClose={() => setIsFullscreen(false)}
+          />
+        )}
+      </AnimatePresence>
 
       <Footer />
     </div>

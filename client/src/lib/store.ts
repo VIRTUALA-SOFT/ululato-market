@@ -489,3 +489,111 @@ export const useCheckoutStore = create<CheckoutState>()((set) => ({
     orderId: null,
   }),
 }));
+
+
+// ============ RECENTLY VIEWED STORE ============
+
+interface RecentlyViewedState {
+  viewedIds: string[];
+  maxItems: number;
+  
+  // Actions
+  addToHistory: (productId: string) => void;
+  clearHistory: () => void;
+  
+  // Computed
+  getRecentlyViewed: () => string[];
+}
+
+export const useRecentlyViewedStore = create<RecentlyViewedState>()(
+  persist(
+    (set, get) => ({
+      viewedIds: [],
+      maxItems: 10,
+      
+      addToHistory: (productId) => {
+        set((state) => {
+          // Remove if already exists (to move to front)
+          const filtered = state.viewedIds.filter(id => id !== productId);
+          // Add to front and limit to maxItems
+          return {
+            viewedIds: [productId, ...filtered].slice(0, state.maxItems),
+          };
+        });
+      },
+      
+      clearHistory: () => set({ viewedIds: [] }),
+      
+      getRecentlyViewed: () => get().viewedIds,
+    }),
+    {
+      name: 'ululato-recently-viewed',
+    }
+  )
+);
+
+// ============ COMPARE STORE ============
+
+interface CompareState {
+  compareIds: string[];
+  maxItems: number;
+  isOpen: boolean;
+  
+  // Actions
+  addToCompare: (productId: string) => boolean;
+  removeFromCompare: (productId: string) => void;
+  clearCompare: () => void;
+  isInCompare: (productId: string) => boolean;
+  toggleComparePanel: () => void;
+  openComparePanel: () => void;
+  closeComparePanel: () => void;
+  
+  // Computed
+  compareCount: () => number;
+  canAddMore: () => boolean;
+}
+
+export const useCompareStore = create<CompareState>()(
+  persist(
+    (set, get) => ({
+      compareIds: [],
+      maxItems: 4,
+      isOpen: false,
+      
+      addToCompare: (productId) => {
+        const state = get();
+        if (state.compareIds.length >= state.maxItems) {
+          return false;
+        }
+        if (state.compareIds.includes(productId)) {
+          return true;
+        }
+        set({ compareIds: [...state.compareIds, productId] });
+        return true;
+      },
+      
+      removeFromCompare: (productId) => {
+        set((state) => ({
+          compareIds: state.compareIds.filter(id => id !== productId),
+        }));
+      },
+      
+      clearCompare: () => set({ compareIds: [] }),
+      
+      isInCompare: (productId) => get().compareIds.includes(productId),
+      
+      toggleComparePanel: () => set((state) => ({ isOpen: !state.isOpen })),
+      openComparePanel: () => set({ isOpen: true }),
+      closeComparePanel: () => set({ isOpen: false }),
+      
+      compareCount: () => get().compareIds.length,
+      canAddMore: () => get().compareIds.length < get().maxItems,
+    }),
+    {
+      name: 'ululato-compare',
+      partialize: (state) => ({
+        compareIds: state.compareIds,
+      }),
+    }
+  )
+);
