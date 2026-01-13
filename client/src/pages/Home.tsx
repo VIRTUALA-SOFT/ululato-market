@@ -1,118 +1,140 @@
 /**
- * ULULATO Landing Page
- * Design: Hero with 3D particles, mission reveal, featured products
+ * ULULATO Landing Page - OPTIMIZED
+ * Design: Hero with lightweight particles, mission reveal, featured products
  * Style: "Neon Ancestral" - Cyberpunk Indígena
+ * Performance: Lazy loading, reduced particles, optimized animations
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, memo, lazy, Suspense } from 'react';
 import { Link } from 'wouter';
 import { ArrowRight, Sparkles, Shield, Truck, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import ProductCard from '@/components/ProductCard';
 import { getFeaturedProducts, categories } from '@/lib/mockDb';
 import { cn } from '@/lib/utils';
 
-// Particle System Component
-function ParticleHero() {
+// Lazy load ProductCard for better initial load
+const ProductCard = lazy(() => import('@/components/ProductCard'));
+
+// Loading skeleton for products
+function ProductSkeleton() {
+  return (
+  <div className="rounded-2xl glass-card border border-white/10 p-4 animate-pulse">
+    <div className="aspect-square bg-white/5 rounded-xl mb-4" />
+    <div className="h-4 bg-white/5 rounded w-3/4 mb-2" />
+    <div className="h-3 bg-white/5 rounded w-1/2 mb-4" />
+    <div className="h-6 bg-white/5 rounded w-1/3" />
+  </div>
+  );
+}
+
+// Optimized Particle System - Reduced count and complexity
+const ParticleHero = memo(function ParticleHero() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationRef = useRef<number | undefined>(undefined);
+  const particlesRef = useRef<Array<{
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    size: number;
+    color: string;
+    alpha: number;
+  }>>([]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
-    let animationId: number;
-    let particles: Array<{
-      x: number;
-      y: number;
-      vx: number;
-      vy: number;
-      size: number;
-      color: string;
-      alpha: number;
-    }> = [];
-
-    const colors = ['#FFD100', '#101C38', '#C81D25', '#FFFFFF'];
+    const colors = ['#FFD100', '#101C38', '#C81D25'];
     let mouseX = 0;
     let mouseY = 0;
+    let isVisible = true;
 
     const resize = () => {
-      canvas.width = canvas.offsetWidth * window.devicePixelRatio;
-      canvas.height = canvas.offsetHeight * window.devicePixelRatio;
-      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      const dpr = Math.min(window.devicePixelRatio, 2); // Limit DPR for performance
+      canvas.width = canvas.offsetWidth * dpr;
+      canvas.height = canvas.offsetHeight * dpr;
+      ctx.scale(dpr, dpr);
     };
 
     const createParticles = () => {
-      particles = [];
-      const count = Math.min(100, Math.floor((canvas.offsetWidth * canvas.offsetHeight) / 10000));
+      // Reduced particle count for better performance
+      const count = Math.min(40, Math.floor((canvas.offsetWidth * canvas.offsetHeight) / 25000));
+      particlesRef.current = [];
       
       for (let i = 0; i < count; i++) {
-        particles.push({
+        particlesRef.current.push({
           x: Math.random() * canvas.offsetWidth,
           y: Math.random() * canvas.offsetHeight,
-          vx: (Math.random() - 0.5) * 0.5,
-          vy: (Math.random() - 0.5) * 0.5,
-          size: Math.random() * 3 + 1,
+          vx: (Math.random() - 0.5) * 0.3,
+          vy: (Math.random() - 0.5) * 0.3,
+          size: Math.random() * 2 + 1,
           color: colors[Math.floor(Math.random() * colors.length)],
-          alpha: Math.random() * 0.5 + 0.2,
+          alpha: Math.random() * 0.4 + 0.1,
         });
       }
     };
 
     const animate = () => {
-      ctx.clearRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+      if (!isVisible) {
+        animationRef.current = requestAnimationFrame(animate);
+        return;
+      }
 
-      particles.forEach((p, i) => {
-        // Mouse interaction
+      ctx.clearRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+      const particles = particlesRef.current;
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        
+        // Simplified mouse interaction
         const dx = mouseX - p.x;
         const dy = mouseY - p.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+        const distSq = dx * dx + dy * dy;
         
-        if (dist < 150) {
+        if (distSq < 22500) { // 150^2
+          const dist = Math.sqrt(distSq);
           const force = (150 - dist) / 150;
-          p.vx += (dx / dist) * force * 0.02;
-          p.vy += (dy / dist) * force * 0.02;
+          p.vx += (dx / dist) * force * 0.01;
+          p.vy += (dy / dist) * force * 0.01;
         }
 
-        // Update position
         p.x += p.vx;
         p.y += p.vy;
-
-        // Damping
         p.vx *= 0.99;
         p.vy *= 0.99;
 
-        // Bounds
         if (p.x < 0 || p.x > canvas.offsetWidth) p.vx *= -1;
         if (p.y < 0 || p.y > canvas.offsetHeight) p.vy *= -1;
 
-        // Draw particle
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fillStyle = p.color;
         ctx.globalAlpha = p.alpha;
         ctx.fill();
 
-        // Draw connections
-        particles.slice(i + 1).forEach((p2) => {
+        // Draw fewer connections (only check next 5 particles)
+        for (let j = i + 1; j < Math.min(i + 6, particles.length); j++) {
+          const p2 = particles[j];
           const d = Math.sqrt((p.x - p2.x) ** 2 + (p.y - p2.y) ** 2);
-          if (d < 100) {
+          if (d < 80) {
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p2.x, p2.y);
             ctx.strokeStyle = p.color;
-            ctx.globalAlpha = (1 - d / 100) * 0.2;
+            ctx.globalAlpha = (1 - d / 80) * 0.15;
             ctx.stroke();
           }
-        });
-      });
+        }
+      }
 
       ctx.globalAlpha = 1;
-      animationId = requestAnimationFrame(animate);
+      animationRef.current = requestAnimationFrame(animate);
     };
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -121,20 +143,31 @@ function ParticleHero() {
       mouseY = e.clientY - rect.top;
     };
 
+    // Visibility API to pause when tab is hidden
+    const handleVisibilityChange = () => {
+      isVisible = !document.hidden;
+    };
+
     resize();
     createParticles();
     animate();
 
-    window.addEventListener('resize', () => {
+    const resizeHandler = () => {
       resize();
       createParticles();
-    });
-    canvas.addEventListener('mousemove', handleMouseMove);
+    };
+
+    window.addEventListener('resize', resizeHandler);
+    canvas.addEventListener('mousemove', handleMouseMove, { passive: true });
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      cancelAnimationFrame(animationId);
-      window.removeEventListener('resize', resize);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+      window.removeEventListener('resize', resizeHandler);
       canvas.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
@@ -145,10 +178,10 @@ function ParticleHero() {
       style={{ touchAction: 'none' }}
     />
   );
-}
+});
 
-// Mission Section with scroll reveal
-function MissionSection() {
+// Mission Section with scroll reveal - Optimized
+const MissionSection = memo(function MissionSection() {
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
 
@@ -157,9 +190,10 @@ function MissionSection() {
       ([entry]) => {
         if (entry.isIntersecting) {
           setIsVisible(true);
+          observer.disconnect();
         }
       },
-      { threshold: 0.3 }
+      { threshold: 0.2, rootMargin: '50px' }
     );
 
     if (sectionRef.current) {
@@ -186,12 +220,10 @@ function MissionSection() {
               <span
                 key={i}
                 className={cn(
-                  'inline-block mr-3 transition-all duration-700',
-                  isVisible
-                    ? 'opacity-100 translate-y-0'
-                    : 'opacity-0 translate-y-8'
+                  'inline-block mr-3 transition-all duration-500',
+                  isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
                 )}
-                style={{ transitionDelay: `${i * 80}ms` }}
+                style={{ transitionDelay: `${i * 50}ms` }}
               >
                 {word === 'origen,' || word === 'vida,' || word === 'ancestral' || word === 'digital.' ? (
                   <span className="text-primary">{word}</span>
@@ -204,15 +236,14 @@ function MissionSection() {
         </div>
       </div>
 
-      {/* Decorative Elements */}
       <div className="absolute top-1/2 left-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -translate-y-1/2" />
       <div className="absolute top-1/2 right-0 w-32 h-32 bg-secondary/30 rounded-full blur-3xl -translate-y-1/2" />
     </section>
   );
-}
+});
 
-// Features Section
-function FeaturesSection() {
+// Features Section - Memoized
+const FeaturesSection = memo(function FeaturesSection() {
   const features = [
     {
       icon: Sparkles,
@@ -243,9 +274,9 @@ function FeaturesSection() {
           {features.map((feature, index) => (
             <div
               key={index}
-              className="group text-center p-6 rounded-2xl glass-card border border-white/10 hover:border-primary/30 transition-all duration-300"
+              className="group text-center p-6 rounded-2xl glass-card border border-white/10 hover:border-primary/30 transition-colors duration-300"
             >
-              <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 group-hover:scale-110 transition-all duration-300">
+              <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors duration-300">
                 <feature.icon className="w-7 h-7 text-primary" />
               </div>
               <h3 className="font-display font-semibold mb-2">{feature.title}</h3>
@@ -256,10 +287,10 @@ function FeaturesSection() {
       </div>
     </section>
   );
-}
+});
 
-// Categories Section
-function CategoriesSection() {
+// Categories Section - Memoized
+const CategoriesSection = memo(function CategoriesSection() {
   return (
     <section className="py-16 md:py-24 bg-gradient-to-b from-transparent via-secondary/20 to-transparent">
       <div className="container">
@@ -278,7 +309,7 @@ function CategoriesSection() {
               <div className={cn(
                 'group relative p-6 rounded-2xl overflow-hidden cursor-pointer',
                 'glass-card border border-white/10 hover:border-primary/30',
-                'transition-all duration-300 hover:scale-105'
+                'transition-colors duration-300'
               )}>
                 <div className={cn(
                   'absolute inset-0 bg-gradient-to-br opacity-50 group-hover:opacity-70 transition-opacity',
@@ -295,11 +326,11 @@ function CategoriesSection() {
       </div>
     </section>
   );
-}
+});
 
-// Featured Products Section
-function FeaturedProductsSection() {
-  const featuredProducts = getFeaturedProducts();
+// Featured Products Section with Lazy Loading
+const FeaturedProductsSection = memo(function FeaturedProductsSection() {
+  const [featuredProducts] = useState(() => getFeaturedProducts());
 
   return (
     <section className="py-16 md:py-24">
@@ -321,14 +352,12 @@ function FeaturedProductsSection() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {featuredProducts.slice(0, 6).map((product, index) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              featured={index === 0}
-            />
-          ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Suspense fallback={<><ProductSkeleton /><ProductSkeleton /><ProductSkeleton /><ProductSkeleton /></>}>
+            {featuredProducts.slice(0, 4).map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </Suspense>
         </div>
 
         <div className="mt-8 text-center md:hidden">
@@ -342,20 +371,21 @@ function FeaturedProductsSection() {
       </div>
     </section>
   );
-}
+});
 
-// CTA Section
-function CTASection() {
+// CTA Section - Optimized image loading
+const CTASection = memo(function CTASection() {
   return (
     <section className="py-16 md:py-24">
       <div className="container">
         <div className="relative rounded-3xl overflow-hidden">
-          {/* Background Image */}
           <div className="absolute inset-0">
             <img
               src="/images/hero-feather-abstract.png"
-              alt="Background"
+              alt=""
               className="w-full h-full object-cover opacity-30"
+              loading="lazy"
+              decoding="async"
             />
             <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-transparent" />
           </div>
@@ -388,9 +418,9 @@ function CTASection() {
       </div>
     </section>
   );
-}
+});
 
-// Main Home Page
+// Main Home Page - Optimized
 export default function Home() {
   return (
     <div className="min-h-screen bg-background">
@@ -398,21 +428,21 @@ export default function Home() {
 
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        {/* Particle Background */}
         <ParticleHero />
 
-        {/* Hero Image Overlay */}
+        {/* Hero Image - Lazy loaded */}
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] opacity-20">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] opacity-15">
             <img
               src="/images/hero-feather-abstract.png"
-              alt="Feather"
-              className="w-full h-full object-contain animate-float"
+              alt=""
+              className="w-full h-full object-contain"
+              loading="eager"
+              decoding="async"
             />
           </div>
         </div>
 
-        {/* Gradient Overlays */}
         <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background pointer-events-none" />
         <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-transparent to-background/50 pointer-events-none" />
 
@@ -468,26 +498,17 @@ export default function Home() {
         </div>
 
         {/* Scroll Indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
           <div className="w-6 h-10 rounded-full border-2 border-white/30 flex items-start justify-center p-2">
             <div className="w-1 h-2 bg-primary rounded-full animate-pulse" />
           </div>
         </div>
       </section>
 
-      {/* Mission Section */}
       <MissionSection />
-
-      {/* Features Section */}
       <FeaturesSection />
-
-      {/* Categories Section */}
       <CategoriesSection />
-
-      {/* Featured Products Section */}
       <FeaturedProductsSection />
-
-      {/* CTA Section */}
       <CTASection />
 
       <Footer />

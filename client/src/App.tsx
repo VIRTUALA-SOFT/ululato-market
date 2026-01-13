@@ -20,6 +20,7 @@ import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import Profile from "./pages/Profile";
 import SellerStudio from "./pages/SellerStudio";
+import Favorites from "./pages/Favorites";
 
 function Router() {
   return (
@@ -40,6 +41,7 @@ function Router() {
       {/* User Routes */}
       <Route path="/profile" component={Profile} />
       <Route path="/profile/orders" component={Profile} />
+      <Route path="/favorites" component={Favorites} />
       
       {/* Seller Routes */}
       <Route path="/sell" component={SellerStudio} />

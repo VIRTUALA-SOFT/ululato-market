@@ -4,12 +4,12 @@
  * Style: "Neon Ancestral" - Cyberpunk Indígena
  */
 
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { Link } from 'wouter';
 import { Heart, ShoppingCart, Star, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Product, formatPrice } from '@/lib/mockDb';
-import { useCartStore } from '@/lib/store';
+import { useCartStore, useFavoritesStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -18,10 +18,13 @@ interface ProductCardProps {
   featured?: boolean;
 }
 
-export default function ProductCard({ product, featured = false }: ProductCardProps) {
-  const [isLiked, setIsLiked] = useState(false);
+function ProductCard({ product, featured = false }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const { addItem, openCart } = useCartStore();
+  const { isFavorite, toggleFavorite } = useFavoritesStore();
+  
+  const isLiked = isFavorite(product.id);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -39,8 +42,10 @@ export default function ProductCard({ product, featured = false }: ProductCardPr
   const handleLike = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsLiked(!isLiked);
-    toast.success(isLiked ? 'Eliminado de favoritos' : 'Agregado a favoritos');
+    const nowFavorite = toggleFavorite(product.id);
+    toast.success(nowFavorite ? 'Agregado a favoritos' : 'Eliminado de favoritos', {
+      description: product.title,
+    });
   };
 
   const getLevelBadge = (level: string) => {
@@ -77,12 +82,21 @@ export default function ProductCard({ product, featured = false }: ProductCardPr
           'relative overflow-hidden bg-secondary/30',
           featured ? 'aspect-square md:aspect-[4/3]' : 'aspect-square'
         )}>
+          {/* Loading skeleton */}
+          {!imageLoaded && (
+            <div className="absolute inset-0 bg-white/5 animate-pulse" />
+          )}
+          
           <img
             src={product.images[0]}
             alt={product.title}
+            loading="lazy"
+            decoding="async"
+            onLoad={() => setImageLoaded(true)}
             className={cn(
               'w-full h-full object-cover transition-transform duration-500',
-              isHovered && 'scale-110'
+              isHovered && 'scale-110',
+              !imageLoaded && 'opacity-0'
             )}
           />
 
@@ -193,3 +207,5 @@ export default function ProductCard({ product, featured = false }: ProductCardPr
     </Link>
   );
 }
+
+export default memo(ProductCard);

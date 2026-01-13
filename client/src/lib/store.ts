@@ -1,6 +1,6 @@
 /**
  * ULULATO Global Store - Zustand
- * Manages: Cart, User Auth, UI State
+ * Manages: Cart, User Auth, UI State, Favorites, Notifications
  * Design: "Neon Ancestral" - Cyberpunk Indígena
  */
 
@@ -100,6 +100,203 @@ export const useCartStore = create<CartState>()(
   )
 );
 
+// ============ FAVORITES STORE ============
+
+interface FavoritesState {
+  favoriteIds: string[];
+  
+  // Actions
+  addFavorite: (productId: string) => void;
+  removeFavorite: (productId: string) => void;
+  toggleFavorite: (productId: string) => boolean;
+  isFavorite: (productId: string) => boolean;
+  clearFavorites: () => void;
+  
+  // Computed
+  totalFavorites: () => number;
+}
+
+export const useFavoritesStore = create<FavoritesState>()(
+  persist(
+    (set, get) => ({
+      favoriteIds: [],
+      
+      addFavorite: (productId) => {
+        set((state) => {
+          if (state.favoriteIds.includes(productId)) return state;
+          return { favoriteIds: [...state.favoriteIds, productId] };
+        });
+      },
+      
+      removeFavorite: (productId) => {
+        set((state) => ({
+          favoriteIds: state.favoriteIds.filter(id => id !== productId),
+        }));
+      },
+      
+      toggleFavorite: (productId) => {
+        const isFav = get().favoriteIds.includes(productId);
+        if (isFav) {
+          get().removeFavorite(productId);
+          return false;
+        } else {
+          get().addFavorite(productId);
+          return true;
+        }
+      },
+      
+      isFavorite: (productId) => get().favoriteIds.includes(productId),
+      
+      clearFavorites: () => set({ favoriteIds: [] }),
+      
+      totalFavorites: () => get().favoriteIds.length,
+    }),
+    {
+      name: 'ululato-favorites',
+    }
+  )
+);
+
+// ============ NOTIFICATIONS STORE ============
+
+export type NotificationType = 'info' | 'success' | 'warning' | 'promo' | 'stock' | 'order';
+
+export interface Notification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  timestamp: Date;
+  read: boolean;
+  actionUrl?: string;
+  actionLabel?: string;
+  productId?: string;
+  imageUrl?: string;
+}
+
+interface NotificationsState {
+  notifications: Notification[];
+  unreadCount: number;
+  isOpen: boolean;
+  
+  // Actions
+  addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
+  markAsRead: (notificationId: string) => void;
+  markAllAsRead: () => void;
+  removeNotification: (notificationId: string) => void;
+  clearNotifications: () => void;
+  toggleNotifications: () => void;
+  openNotifications: () => void;
+  closeNotifications: () => void;
+}
+
+// Generate initial notifications for demo
+const initialNotifications: Notification[] = [
+  {
+    id: 'notif-1',
+    type: 'promo',
+    title: '¡Oferta especial!',
+    message: '20% de descuento en artesanías wayuu este fin de semana',
+    timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 min ago
+    read: false,
+    actionUrl: '/market?category=Artesanías',
+    actionLabel: 'Ver ofertas',
+    imageUrl: '/images/mochila-wayuu-yellow.png',
+  },
+  {
+    id: 'notif-2',
+    type: 'stock',
+    title: 'Stock bajo',
+    message: 'El Chinchorro Guajiro tiene pocas unidades disponibles',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
+    read: false,
+    productId: 'prod-2',
+    actionUrl: '/product/chinchorro-guajiro',
+    actionLabel: 'Ver producto',
+    imageUrl: '/images/chinchorro-guajiro.png',
+  },
+  {
+    id: 'notif-3',
+    type: 'info',
+    title: 'Nuevos productos',
+    message: '5 nuevos productos de artesanos del Chocó',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
+    read: true,
+    actionUrl: '/market',
+    actionLabel: 'Explorar',
+  },
+];
+
+export const useNotificationsStore = create<NotificationsState>()(
+  persist(
+    (set, get) => ({
+      notifications: initialNotifications,
+      unreadCount: initialNotifications.filter(n => !n.read).length,
+      isOpen: false,
+      
+      addNotification: (notification) => {
+        const newNotification: Notification = {
+          ...notification,
+          id: `notif-${Date.now()}`,
+          timestamp: new Date(),
+          read: false,
+        };
+        
+        set((state) => ({
+          notifications: [newNotification, ...state.notifications].slice(0, 50), // Keep max 50
+          unreadCount: state.unreadCount + 1,
+        }));
+      },
+      
+      markAsRead: (notificationId) => {
+        set((state) => {
+          const notification = state.notifications.find(n => n.id === notificationId);
+          if (!notification || notification.read) return state;
+          
+          return {
+            notifications: state.notifications.map(n =>
+              n.id === notificationId ? { ...n, read: true } : n
+            ),
+            unreadCount: Math.max(0, state.unreadCount - 1),
+          };
+        });
+      },
+      
+      markAllAsRead: () => {
+        set((state) => ({
+          notifications: state.notifications.map(n => ({ ...n, read: true })),
+          unreadCount: 0,
+        }));
+      },
+      
+      removeNotification: (notificationId) => {
+        set((state) => {
+          const notification = state.notifications.find(n => n.id === notificationId);
+          return {
+            notifications: state.notifications.filter(n => n.id !== notificationId),
+            unreadCount: notification && !notification.read 
+              ? Math.max(0, state.unreadCount - 1) 
+              : state.unreadCount,
+          };
+        });
+      },
+      
+      clearNotifications: () => set({ notifications: [], unreadCount: 0 }),
+      
+      toggleNotifications: () => set((state) => ({ isOpen: !state.isOpen })),
+      openNotifications: () => set({ isOpen: true }),
+      closeNotifications: () => set({ isOpen: false }),
+    }),
+    {
+      name: 'ululato-notifications',
+      partialize: (state) => ({
+        notifications: state.notifications,
+        unreadCount: state.unreadCount,
+      }),
+    }
+  )
+);
+
 // ============ AUTH STORE ============
 
 interface AuthState {
@@ -127,6 +324,14 @@ export const useAuthStore = create<AuthState>()(
         if (user) {
           const userOrders = mockOrders.filter(o => o.userId === user.id);
           set({ user, isAuthenticated: true, orders: userOrders });
+          
+          // Add welcome notification
+          useNotificationsStore.getState().addNotification({
+            type: 'success',
+            title: '¡Bienvenido de vuelta!',
+            message: `Hola ${user.name}, nos alegra verte de nuevo`,
+          });
+          
           return true;
         }
         
@@ -141,6 +346,14 @@ export const useAuthStore = create<AuthState>()(
         };
         
         set({ user: demoUser, isAuthenticated: true, orders: [] });
+        
+        // Add welcome notification
+        useNotificationsStore.getState().addNotification({
+          type: 'success',
+          title: '¡Bienvenido a ULULATO!',
+          message: 'Tu cuenta ha sido creada exitosamente',
+        });
+        
         return true;
       },
       
@@ -159,6 +372,14 @@ export const useAuthStore = create<AuthState>()(
         };
         
         set({ user: newUser, isAuthenticated: true, orders: [] });
+        
+        // Add welcome notification
+        useNotificationsStore.getState().addNotification({
+          type: 'success',
+          title: '¡Bienvenido a ULULATO!',
+          message: `Hola ${name}, tu cuenta ha sido creada exitosamente`,
+        });
+        
         return true;
       },
     }),
@@ -242,11 +463,23 @@ export const useCheckoutStore = create<CheckoutState>()((set) => ({
   
   setPaymentInfo: (info) => set({ paymentInfo: info }),
   
-  completeOrder: () => set({
-    isComplete: true,
-    orderId: `ORD-${Date.now()}`,
-    step: 3,
-  }),
+  completeOrder: () => {
+    const orderId = `ORD-${Date.now()}`;
+    set({
+      isComplete: true,
+      orderId,
+      step: 3,
+    });
+    
+    // Add order notification
+    useNotificationsStore.getState().addNotification({
+      type: 'order',
+      title: '¡Pedido confirmado!',
+      message: `Tu pedido ${orderId} ha sido procesado exitosamente`,
+      actionUrl: '/profile',
+      actionLabel: 'Ver pedido',
+    });
+  },
   
   resetCheckout: () => set({
     step: 1,

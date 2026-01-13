@@ -6,11 +6,12 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
-import { ShoppingCart, User, Menu, X, Search, Heart, Store } from 'lucide-react';
+import { ShoppingCart, User, Menu, X, Search, Heart, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useCartStore, useAuthStore } from '@/lib/store';
+import { useCartStore, useAuthStore, useFavoritesStore, useNotificationsStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import CartDrawer from './CartDrawer';
+import NotificationsDrawer from './NotificationsDrawer';
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -19,13 +20,17 @@ export default function Navbar() {
   
   const { totalItems, openCart } = useCartStore();
   const { isAuthenticated, user } = useAuthStore();
+  const { totalFavorites } = useFavoritesStore();
+  const { unreadCount, openNotifications } = useNotificationsStore();
+  
   const cartCount = totalItems();
+  const favCount = totalFavorites();
 
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
     };
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -49,7 +54,7 @@ export default function Navbar() {
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2 group">
               <div className="relative">
-                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-primary via-primary/80 to-secondary flex items-center justify-center group-hover:neon-glow transition-all duration-300">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-primary via-primary/80 to-secondary flex items-center justify-center transition-all duration-300">
                   <span className="text-primary-foreground font-display font-bold text-lg md:text-xl">U</span>
                 </div>
               </div>
@@ -80,7 +85,7 @@ export default function Navbar() {
             </div>
 
             {/* Right Actions */}
-            <div className="flex items-center gap-2 md:gap-4">
+            <div className="flex items-center gap-2 md:gap-3">
               {/* Search Button */}
               <Link href="/market">
                 <Button
@@ -92,13 +97,35 @@ export default function Navbar() {
                 </Button>
               </Link>
 
-              {/* Wishlist */}
+              {/* Favorites */}
+              <Link href="/favorites">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative hidden md:flex text-foreground/70 hover:text-destructive hover:bg-white/10"
+                >
+                  <Heart className="w-5 h-5" />
+                  {favCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground text-xs font-bold rounded-full flex items-center justify-center">
+                      {favCount > 9 ? '9+' : favCount}
+                    </span>
+                  )}
+                </Button>
+              </Link>
+
+              {/* Notifications */}
               <Button
                 variant="ghost"
                 size="icon"
-                className="hidden md:flex text-foreground/70 hover:text-destructive hover:bg-white/10"
+                className="relative text-foreground/70 hover:text-primary hover:bg-white/10"
+                onClick={openNotifications}
               >
-                <Heart className="w-5 h-5" />
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </Button>
 
               {/* Cart Button */}
@@ -110,15 +137,15 @@ export default function Navbar() {
               >
                 <ShoppingCart className="w-5 h-5" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs font-bold rounded-full flex items-center justify-center animate-pulse-glow">
-                    {cartCount}
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs font-bold rounded-full flex items-center justify-center">
+                    {cartCount > 9 ? '9+' : cartCount}
                   </span>
                 )}
               </Button>
 
               {/* User Menu */}
               {isAuthenticated ? (
-                <Link href="/profile/orders">
+                <Link href="/profile">
                   <Button
                     variant="ghost"
                     className="hidden md:flex items-center gap-2 text-foreground/70 hover:text-foreground hover:bg-white/10"
@@ -176,11 +203,28 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
+
+            {/* Mobile Favorites Link */}
+            <Link
+              href="/favorites"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center justify-between py-3 px-4 rounded-lg text-foreground/70 hover:bg-white/10"
+            >
+              <span className="flex items-center gap-2">
+                <Heart className="w-5 h-5" />
+                Favoritos
+              </span>
+              {favCount > 0 && (
+                <span className="w-6 h-6 bg-destructive text-destructive-foreground text-xs font-bold rounded-full flex items-center justify-center">
+                  {favCount}
+                </span>
+              )}
+            </Link>
             
             <div className="border-t border-white/10 pt-4">
               {isAuthenticated ? (
                 <Link
-                  href="/profile/orders"
+                  href="/profile"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-3 py-3 px-4 rounded-lg text-foreground/70 hover:bg-white/10"
                 >
@@ -213,6 +257,9 @@ export default function Navbar() {
 
       {/* Cart Drawer */}
       <CartDrawer />
+      
+      {/* Notifications Drawer */}
+      <NotificationsDrawer />
     </>
   );
 }
