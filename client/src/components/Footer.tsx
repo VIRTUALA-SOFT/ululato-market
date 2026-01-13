@@ -6,40 +6,33 @@
 
 import { Link } from 'wouter';
 import { Instagram, Facebook, Twitter, Mail, MapPin, Phone } from 'lucide-react';
-import { toast } from 'sonner';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
 
-  // Handler for placeholder links
-  const handlePlaceholderClick = (e: React.MouseEvent, label: string) => {
-    e.preventDefault();
-    toast.info(`${label} - Próximamente disponible`);
-  };
-
   const footerLinks = {
     marketplace: [
-      { label: 'Explorar', href: '/market', functional: true },
-      { label: 'Categorías', href: '/market?view=categories', functional: true },
-      { label: 'Vendedores', href: '/market?view=sellers', functional: true },
-      { label: 'Ofertas', href: '/market?filter=ofertas', functional: true },
+      { label: 'Explorar', href: '/market' },
+      { label: 'Categorías', href: '/market' },
+      { label: 'Vendedores', href: '/market' },
+      { label: 'Ofertas', href: '/market' },
     ],
     vendedores: [
-      { label: 'Vender en ULULATO', href: '/sell', functional: true },
-      { label: 'Centro de Vendedores', href: '/sell', functional: true },
-      { label: 'Guía de Inicio', href: '/help/seller-guide', functional: false },
-      { label: 'Comisiones', href: '/help/commissions', functional: false },
+      { label: 'Vender en ULULATO', href: '/sell' },
+      { label: 'Centro de Vendedores', href: '/sell' },
+      { label: 'Guía de Inicio', href: '/seller-guide' },
+      { label: 'Comisiones', href: '/fees' },
     ],
     soporte: [
-      { label: 'Centro de Ayuda', href: '/help', functional: false },
-      { label: 'Contacto', href: '/contact', functional: false },
-      { label: 'Envíos', href: '/help/shipping', functional: false },
-      { label: 'Devoluciones', href: '/help/returns', functional: false },
+      { label: 'Centro de Ayuda', href: '/help' },
+      { label: 'Contacto', href: '/contact' },
+      { label: 'Envíos', href: '/shipping' },
+      { label: 'Devoluciones', href: '/returns' },
     ],
     legal: [
-      { label: 'Términos de Uso', href: '/legal/terms', functional: false },
-      { label: 'Privacidad', href: '/legal/privacy', functional: false },
-      { label: 'Cookies', href: '/legal/cookies', functional: false },
+      { label: 'Términos de Uso', href: '/terms' },
+      { label: 'Privacidad', href: '/privacy' },
+      { label: 'Cookies', href: '/cookies' },
     ],
   };
 
@@ -100,22 +93,12 @@ export default function Footer() {
             <ul className="space-y-3">
               {footerLinks.marketplace.map((link) => (
                 <li key={link.label}>
-                  {link.functional ? (
-                    <Link
-                      href={link.href}
-                      className="text-muted-foreground text-sm hover:text-primary transition-colors"
-                    >
-                      {link.label}
-                    </Link>
-                  ) : (
-                    <a
-                      href={link.href}
-                      onClick={(e) => handlePlaceholderClick(e, link.label)}
-                      className="text-muted-foreground text-sm hover:text-primary transition-colors cursor-pointer"
-                    >
-                      {link.label}
-                    </a>
-                  )}
+                  <Link
+                    href={link.href}
+                    className="text-muted-foreground text-sm hover:text-primary transition-colors"
+                  >
+                    {link.label}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -128,22 +111,12 @@ export default function Footer() {
             <ul className="space-y-3">
               {footerLinks.vendedores.map((link) => (
                 <li key={link.label}>
-                  {link.functional ? (
-                    <Link
-                      href={link.href}
-                      className="text-muted-foreground text-sm hover:text-primary transition-colors"
-                    >
-                      {link.label}
-                    </Link>
-                  ) : (
-                    <a
-                      href={link.href}
-                      onClick={(e) => handlePlaceholderClick(e, link.label)}
-                      className="text-muted-foreground text-sm hover:text-primary transition-colors cursor-pointer"
-                    >
-                      {link.label}
-                    </a>
-                  )}
+                  <Link
+                    href={link.href}
+                    className="text-muted-foreground text-sm hover:text-primary transition-colors"
+                  >
+                    {link.label}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -156,13 +129,12 @@ export default function Footer() {
             <ul className="space-y-3">
               {footerLinks.soporte.map((link) => (
                 <li key={link.label}>
-                  <a
+                  <Link
                     href={link.href}
-                    onClick={(e) => handlePlaceholderClick(e, link.label)}
-                    className="text-muted-foreground text-sm hover:text-primary transition-colors cursor-pointer"
+                    className="text-muted-foreground text-sm hover:text-primary transition-colors"
                   >
                     {link.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -208,14 +180,13 @@ export default function Footer() {
           </p>
           <div className="flex items-center gap-6">
             {footerLinks.legal.map((link) => (
-              <a
+              <Link
                 key={link.label}
                 href={link.href}
-                onClick={(e) => handlePlaceholderClick(e, link.label)}
-                className="text-muted-foreground text-sm hover:text-foreground transition-colors cursor-pointer"
+                className="text-muted-foreground text-sm hover:text-foreground transition-colors"
               >
                 {link.label}
-              </a>
+              </Link>
             ))}
           </div>
         </div>

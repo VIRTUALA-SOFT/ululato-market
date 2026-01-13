@@ -23,6 +23,21 @@ import SellerStudio from "./pages/SellerStudio";
 import Favorites from "./pages/Favorites";
 import StorePage from "./pages/StorePage";
 
+// Support Pages
+import HelpCenter from "./pages/HelpCenter";
+import Contact from "./pages/Contact";
+import Shipping from "./pages/Shipping";
+import Returns from "./pages/Returns";
+
+// Seller Pages
+import SellerGuide from "./pages/SellerGuide";
+import Fees from "./pages/Fees";
+
+// Legal Pages
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
+import Cookies from "./pages/Cookies";
+
 function Router() {
   return (
     <Switch>
@@ -49,6 +64,19 @@ function Router() {
       
       {/* Seller Routes */}
       <Route path="/sell" component={SellerStudio} />
+      <Route path="/seller-guide" component={SellerGuide} />
+      <Route path="/fees" component={Fees} />
+      
+      {/* Support Routes */}
+      <Route path="/help" component={HelpCenter} />
+      <Route path="/contact" component={Contact} />
+      <Route path="/shipping" component={Shipping} />
+      <Route path="/returns" component={Returns} />
+      
+      {/* Legal Routes */}
+      <Route path="/terms" component={Terms} />
+      <Route path="/privacy" component={Privacy} />
+      <Route path="/cookies" component={Cookies} />
       
       {/* 404 */}
       <Route path="/404" component={NotFound} />
