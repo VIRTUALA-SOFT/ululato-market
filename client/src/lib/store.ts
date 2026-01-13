@@ -597,3 +597,191 @@ export const useCompareStore = create<CompareState>()(
     }
   )
 );
+
+
+// ============ COUPONS STORE ============
+
+export interface Coupon {
+  code: string;
+  type: 'percentage' | 'fixed';
+  value: number; // Percentage (0-100) or fixed amount in COP
+  minPurchase: number; // Minimum purchase amount to apply
+  maxDiscount?: number; // Maximum discount for percentage coupons
+  description: string;
+  expiresAt: Date;
+  usageLimit?: number;
+  usedCount: number;
+  categories?: string[]; // Applicable categories, empty = all
+  isActive: boolean;
+}
+
+// Available coupons in the system
+export const availableCoupons: Coupon[] = [
+  {
+    code: 'BIENVENIDO10',
+    type: 'percentage',
+    value: 10,
+    minPurchase: 50000,
+    maxDiscount: 50000,
+    description: '10% de descuento en tu primera compra',
+    expiresAt: new Date('2026-12-31'),
+    usedCount: 0,
+    isActive: true,
+  },
+  {
+    code: 'ARTESANO20',
+    type: 'percentage',
+    value: 20,
+    minPurchase: 100000,
+    maxDiscount: 80000,
+    description: '20% en artesanías seleccionadas',
+    expiresAt: new Date('2026-06-30'),
+    usedCount: 0,
+    categories: ['Artesanías'],
+    isActive: true,
+  },
+  {
+    code: 'ENVIOGRATIS',
+    type: 'fixed',
+    value: 15000,
+    minPurchase: 80000,
+    description: 'Envío gratis en compras mayores a $80.000',
+    expiresAt: new Date('2026-12-31'),
+    usedCount: 0,
+    isActive: true,
+  },
+  {
+    code: 'CAFE15',
+    type: 'percentage',
+    value: 15,
+    minPurchase: 30000,
+    maxDiscount: 30000,
+    description: '15% en productos de café',
+    expiresAt: new Date('2026-03-31'),
+    usedCount: 0,
+    categories: ['Agrícola'],
+    isActive: true,
+  },
+  {
+    code: 'TEJEDOR25',
+    type: 'percentage',
+    value: 25,
+    minPurchase: 200000,
+    maxDiscount: 100000,
+    description: '25% en compras mayores a $200.000',
+    expiresAt: new Date('2026-12-31'),
+    usedCount: 0,
+    isActive: true,
+  },
+];
+
+interface CouponState {
+  appliedCoupon: Coupon | null;
+  discountAmount: number;
+  error: string | null;
+  
+  // Actions
+  applyCoupon: (code: string, subtotal: number, categories?: string[]) => boolean;
+  removeCoupon: () => void;
+  calculateDiscount: (subtotal: number, categories?: string[]) => number;
+  validateCoupon: (code: string, subtotal: number, categories?: string[]) => { valid: boolean; error?: string };
+}
+
+export const useCouponStore = create<CouponState>()(
+  persist(
+    (set, get) => ({
+      appliedCoupon: null,
+      discountAmount: 0,
+      error: null,
+      
+      validateCoupon: (code, subtotal, categories = []) => {
+        const coupon = availableCoupons.find(
+          c => c.code.toUpperCase() === code.toUpperCase()
+        );
+        
+        if (!coupon) {
+          return { valid: false, error: 'Cupón no encontrado' };
+        }
+        
+        if (!coupon.isActive) {
+          return { valid: false, error: 'Este cupón ya no está activo' };
+        }
+        
+        if (new Date() > coupon.expiresAt) {
+          return { valid: false, error: 'Este cupón ha expirado' };
+        }
+        
+        if (subtotal < coupon.minPurchase) {
+          return { 
+            valid: false, 
+            error: `Compra mínima de $${coupon.minPurchase.toLocaleString('es-CO')} requerida` 
+          };
+        }
+        
+        if (coupon.categories && coupon.categories.length > 0) {
+          const hasValidCategory = categories.some(cat => coupon.categories!.includes(cat));
+          if (!hasValidCategory && categories.length > 0) {
+            return { 
+              valid: false, 
+              error: `Este cupón solo aplica para: ${coupon.categories.join(', ')}` 
+            };
+          }
+        }
+        
+        return { valid: true };
+      },
+      
+      applyCoupon: (code, subtotal, categories = []) => {
+        const validation = get().validateCoupon(code, subtotal, categories);
+        
+        if (!validation.valid) {
+          set({ error: validation.error || 'Cupón inválido', appliedCoupon: null, discountAmount: 0 });
+          return false;
+        }
+        
+        const coupon = availableCoupons.find(
+          c => c.code.toUpperCase() === code.toUpperCase()
+        )!;
+        
+        const discount = get().calculateDiscount(subtotal, categories);
+        
+        set({ 
+          appliedCoupon: coupon, 
+          discountAmount: discount,
+          error: null 
+        });
+        
+        return true;
+      },
+      
+      removeCoupon: () => {
+        set({ appliedCoupon: null, discountAmount: 0, error: null });
+      },
+      
+      calculateDiscount: (subtotal, _categories = []) => {
+        const coupon = get().appliedCoupon;
+        if (!coupon) return 0;
+        
+        let discount = 0;
+        
+        if (coupon.type === 'percentage') {
+          discount = Math.round(subtotal * (coupon.value / 100));
+          if (coupon.maxDiscount) {
+            discount = Math.min(discount, coupon.maxDiscount);
+          }
+        } else {
+          discount = coupon.value;
+        }
+        
+        return Math.min(discount, subtotal); // Can't discount more than subtotal
+      },
+    }),
+    {
+      name: 'ululato-coupon',
+      partialize: (state) => ({
+        appliedCoupon: state.appliedCoupon,
+        discountAmount: state.discountAmount,
+      }),
+    }
+  )
+);

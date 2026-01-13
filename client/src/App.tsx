@@ -21,6 +21,7 @@ import Checkout from "./pages/Checkout";
 import Profile from "./pages/Profile";
 import SellerStudio from "./pages/SellerStudio";
 import Favorites from "./pages/Favorites";
+import StorePage from "./pages/StorePage";
 
 function Router() {
   return (
@@ -42,6 +43,9 @@ function Router() {
       <Route path="/profile" component={Profile} />
       <Route path="/profile/orders" component={Profile} />
       <Route path="/favorites" component={Favorites} />
+      
+      {/* Store Routes */}
+      <Route path="/store/:storeId" component={StorePage} />
       
       {/* Seller Routes */}
       <Route path="/sell" component={SellerStudio} />

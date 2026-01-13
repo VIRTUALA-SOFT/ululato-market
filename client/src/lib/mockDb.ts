@@ -169,7 +169,12 @@ export const products: Product[] = [
     description: 'Mochila wayuu tejida a mano en un solo color vibrante. Cada mochila tarda aproximadamente 20 días en ser tejida por artesanas de La Guajira. El diseño geométrico representa la cosmovisión wayuu y su conexión con la naturaleza. Incluye correa ajustable tejida con la misma técnica ancestral.',
     price: 185000,
     compareAtPrice: 220000,
-    images: ['/images/mochila-wayuu-multicolor.png'],
+    images: [
+      '/images/mochila-wayuu-multicolor.png',
+      '/images/mochila-wayuu-angle1.png',
+      '/images/mochila-wayuu-angle2.jpg',
+      '/images/mochila-wayuu-angle3.png'
+    ],
     category: 'Artesanías',
     tags: ['wayuu', 'mochila', 'artesanal', 'colombia', 'tejido'],
     storeId: 'store-1',
@@ -267,7 +272,12 @@ export const products: Product[] = [
     description: 'El icónico sombrero vueltiao, símbolo de Colombia. Tejido en caña flecha por artesanos zenúes de Córdoba. 21 vueltas de tejido fino. Certificado de autenticidad incluido.',
     price: 280000,
     compareAtPrice: 350000,
-    images: ['/images/sombrero-vueltiao.jpg'],
+    images: [
+      '/images/sombrero-vueltiao.jpg',
+      '/images/sombrero-vueltiao-angle1.jpg',
+      '/images/sombrero-vueltiao-angle2.jpg',
+      '/images/sombrero-vueltiao-angle4.jpg'
+    ],
     category: 'Artesanías',
     tags: ['sombrero', 'vueltiao', 'zenu', 'cordoba', 'tradicional'],
     storeId: 'store-1',
@@ -288,7 +298,12 @@ export const products: Product[] = [
     description: 'Mochila wayuu con diseño kanaas (figuras geométricas tradicionales) en múltiples colores. Cada diseño cuenta una historia de la cosmovisión wayuu. Tejida 100% a mano con hilos de algodón. Incluye gasa decorativa.',
     price: 245000,
     compareAtPrice: 290000,
-    images: ['/images/mochila-wayuu-yellow.png'],
+    images: [
+      '/images/mochila-wayuu-yellow.png',
+      '/images/mochila-wayuu-angle4.png',
+      '/images/mochila-wayuu-angle1.png',
+      '/images/mochila-wayuu-angle2.jpg'
+    ],
     category: 'Artesanías',
     tags: ['wayuu', 'mochila', 'kanaas', 'multicolor', 'artesanal'],
     storeId: 'store-1',

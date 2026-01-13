@@ -1,10 +1,10 @@
 /**
  * ULULATO Product Detail Page
- * Design: Interactive image viewer with zoom, pan and fullscreen
+ * Design: Interactive 3D viewer with image gallery
  * Style: "Neon Ancestral" - Cyberpunk Indígena
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, Suspense, lazy } from 'react';
 import { useParams, Link } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -25,6 +25,8 @@ import {
   X,
   Move,
   Eye,
+  Box,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -35,6 +37,9 @@ import { getProductBySlug, getReviewsByProduct, products, formatPrice } from '@/
 import { useCartStore, useFavoritesStore, useRecentlyViewedStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+
+// Lazy load 3D viewer for better performance
+const ProductViewer3D = lazy(() => import('@/components/ProductViewer3D'));
 
 // Interactive Image Viewer with Zoom and Pan
 function ImageViewer({ 
@@ -94,8 +99,6 @@ function ImageViewer({
     if (isDragging && zoom > 1) {
       const newX = e.clientX - dragStart.x;
       const newY = e.clientY - dragStart.y;
-      
-      // Limit panning based on zoom level
       const maxPan = (zoom - 1) * 150;
       setPosition({
         x: Math.max(-maxPan, Math.min(maxPan, newX)),
@@ -123,7 +126,6 @@ function ImageViewer({
       onMouseEnter={() => setShowControls(true)}
       onMouseLeave={() => setShowControls(true)}
     >
-      {/* Image Container */}
       <div
         className={cn(
           "w-full h-full transition-transform duration-200",
@@ -147,7 +149,6 @@ function ImageViewer({
         />
       </div>
 
-      {/* Zoom Controls */}
       <AnimatePresence>
         {showControls && (
           <motion.div
@@ -160,7 +161,7 @@ function ImageViewer({
               onClick={handleZoomOut}
               disabled={zoom <= minZoom}
               className="p-2 rounded-full hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="Alejar (scroll down)"
+              title="Alejar"
             >
               <ZoomOut className="w-5 h-5" />
             </button>
@@ -173,7 +174,7 @@ function ImageViewer({
               onClick={handleZoomIn}
               disabled={zoom >= maxZoom}
               className="p-2 rounded-full hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="Acercar (scroll up)"
+              title="Acercar"
             >
               <ZoomIn className="w-5 h-5" />
             </button>
@@ -183,7 +184,7 @@ function ImageViewer({
             <button
               onClick={handleReset}
               className="p-2 rounded-full hover:bg-white/10 transition-colors"
-              title="Restablecer vista"
+              title="Restablecer"
             >
               <RotateCcw className="w-5 h-5" />
             </button>
@@ -199,7 +200,6 @@ function ImageViewer({
         )}
       </AnimatePresence>
 
-      {/* Zoom Indicator */}
       {zoom > 1 && (
         <div className="absolute top-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-lg glass-card border border-white/20 text-sm">
           <Move className="w-4 h-4 text-primary" />
@@ -207,7 +207,6 @@ function ImageViewer({
         </div>
       )}
 
-      {/* Instructions Tooltip */}
       {zoom === 1 && (
         <div className="absolute top-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-lg glass-card border border-white/20 text-sm text-muted-foreground">
           <Eye className="w-4 h-4" />
@@ -271,6 +270,18 @@ function FullscreenModal({
   );
 }
 
+// 3D Loading Fallback
+function Viewer3DFallback() {
+  return (
+    <div className="w-full h-full flex items-center justify-center bg-zinc-900 rounded-2xl">
+      <div className="text-center">
+        <div className="w-16 h-16 mx-auto mb-4 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+        <p className="text-muted-foreground">Cargando visor 3D...</p>
+      </div>
+    </div>
+  );
+}
+
 export default function ProductDetail() {
   const { slug } = useParams<{ slug: string }>();
   const product = getProductBySlug(slug || '');
@@ -278,10 +289,14 @@ export default function ProductDetail() {
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
   
   const { addItem, openCart } = useCartStore();
   const { isFavorite, addFavorite, removeFavorite } = useFavoritesStore();
   const { addToHistory } = useRecentlyViewedStore();
+
+  // Get product images directly from the product data
+  const productImages = product?.images || [];
 
   // Track product view
   useEffect(() => {
@@ -384,41 +399,95 @@ export default function ProductDetail() {
       {/* Product Section */}
       <section className="container py-8">
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
-          {/* Product Images */}
+          {/* Product Images / 3D Viewer */}
           <div className="space-y-4">
-            {/* Main Viewer */}
-            <div className="relative aspect-square rounded-2xl overflow-hidden glass-card border border-white/10">
-              <ImageViewer 
-                src={product.images[selectedImage]} 
-                alt={product.title}
-                onFullscreen={() => setIsFullscreen(true)}
-              />
-
-              {/* Discount Badge */}
-              {hasDiscount && (
-                <span className="absolute top-4 right-4 px-3 py-1 rounded-lg bg-destructive text-destructive-foreground text-sm font-bold z-10">
-                  -{discountPercent}%
+            {/* View Mode Toggle */}
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 p-1 rounded-lg glass-card border border-white/10">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    'h-9 px-4 gap-2 rounded-md transition-all',
+                    viewMode === '2d' && 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  )}
+                  onClick={() => setViewMode('2d')}
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  Galería
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    'h-9 px-4 gap-2 rounded-md transition-all',
+                    viewMode === '3d' && 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  )}
+                  onClick={() => setViewMode('3d')}
+                >
+                  <Box className="w-4 h-4" />
+                  Vista 3D
+                </Button>
+              </div>
+              
+              {viewMode === '2d' && (
+                <span className="text-sm text-muted-foreground">
+                  {selectedImage + 1} / {productImages.length}
                 </span>
               )}
             </div>
 
-            {/* Thumbnail Gallery */}
-            {product.images.length > 1 && (
-              <div className="flex gap-3">
-                {product.images.map((img, index) => (
+            {/* Main Viewer */}
+            <div className="relative aspect-square rounded-2xl overflow-hidden glass-card border border-white/10">
+              {viewMode === '2d' ? (
+                <>
+                  <ImageViewer 
+                    src={productImages[selectedImage]} 
+                    alt={product.title}
+                    onFullscreen={() => setIsFullscreen(true)}
+                  />
+
+                  {/* Discount Badge */}
+                  {hasDiscount && (
+                    <span className="absolute top-4 right-4 px-3 py-1 rounded-lg bg-destructive text-destructive-foreground text-sm font-bold z-10">
+                      -{discountPercent}%
+                    </span>
+                  )}
+                </>
+              ) : (
+                <Suspense fallback={<Viewer3DFallback />}>
+                  <ProductViewer3D 
+                    imageUrl={productImages[0]} 
+                    productName={product.title}
+                  />
+                </Suspense>
+              )}
+            </div>
+
+            {/* Thumbnail Gallery (only in 2D mode) */}
+            {viewMode === '2d' && productImages.length > 1 && (
+              <div className="flex gap-3 overflow-x-auto pb-2">
+                {productImages.map((img, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImage(index)}
                     className={cn(
-                      'w-20 h-20 rounded-lg overflow-hidden border-2 transition-all',
+                      'flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all',
                       selectedImage === index
                         ? 'border-primary ring-2 ring-primary/30'
                         : 'border-white/10 hover:border-white/30'
                     )}
                   >
-                    <img src={img} alt="" className="w-full h-full object-cover" />
+                    <img src={img} alt={`Vista ${index + 1}`} className="w-full h-full object-cover" />
                   </button>
                 ))}
+              </div>
+            )}
+
+            {/* 3D Mode Instructions */}
+            {viewMode === '3d' && (
+              <div className="text-center text-sm text-muted-foreground">
+                <p>Arrastra para rotar • Scroll para zoom • Selecciona un modo de visualización</p>
               </div>
             )}
           </div>
@@ -511,30 +580,28 @@ export default function ProductDetail() {
             {/* Action Buttons */}
             <div className="flex gap-4">
               <Button
+                className="flex-1 btn-brand gap-2 h-12"
                 onClick={handleAddToCart}
-                className="flex-1 btn-brand gap-2"
-                size="lg"
               >
                 <ShoppingCart className="w-5 h-5" />
                 Agregar al Carrito
               </Button>
               <Button
-                onClick={handleBuyNow}
                 variant="outline"
-                className="flex-1 border-primary text-primary hover:bg-primary/10"
-                size="lg"
+                className="flex-1 h-12 border-primary text-primary hover:bg-primary/10"
+                onClick={handleBuyNow}
               >
                 Comprar Ahora
               </Button>
             </div>
 
             {/* Secondary Actions */}
-            <div className="flex items-center gap-6 pt-2">
+            <div className="flex items-center gap-4 pt-2">
               <button
                 onClick={handleToggleFavorite}
                 className={cn(
                   'flex items-center gap-2 text-sm transition-colors',
-                  isLiked ? 'text-red-500' : 'text-muted-foreground hover:text-foreground'
+                  isLiked ? 'text-destructive' : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 <Heart className={cn('w-5 h-5', isLiked && 'fill-current')} />
@@ -592,60 +659,51 @@ export default function ProductDetail() {
         </div>
       </section>
 
-      {/* Tabs Section */}
-      <section className="container py-12">
+      {/* Product Details Tabs */}
+      <section className="container py-8">
         <Tabs defaultValue="description" className="w-full">
-          <TabsList className="w-full justify-start border-b border-white/10 rounded-none bg-transparent p-0 mb-8">
-            <TabsTrigger
-              value="description"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3"
-            >
+          <TabsList className="w-full justify-start glass-card border border-white/10 p-1 h-auto">
+            <TabsTrigger value="description" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Descripción
             </TabsTrigger>
-            <TabsTrigger
-              value="reviews"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3"
-            >
+            <TabsTrigger value="reviews" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Reseñas ({reviews.length})
             </TabsTrigger>
-            <TabsTrigger
-              value="shipping"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3"
-            >
+            <TabsTrigger value="shipping" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Envío y Devoluciones
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="description" className="space-y-6">
+          <TabsContent value="description" className="mt-6">
             <div className="prose prose-invert max-w-none">
-              <p className="text-lg leading-relaxed">{product.description}</p>
+              <p className="text-muted-foreground leading-relaxed">{product.description}</p>
               
-              <h3 className="font-display text-xl font-bold mt-8 mb-4">Características</h3>
+              <h3 className="text-lg font-semibold mt-6 mb-4">Características</h3>
               <ul className="space-y-2">
-                <li className="flex items-center gap-2">
+                <li className="flex items-center gap-2 text-muted-foreground">
                   <span className="w-2 h-2 rounded-full bg-primary" />
                   Hecho a mano por artesanos colombianos
                 </li>
-                <li className="flex items-center gap-2">
+                <li className="flex items-center gap-2 text-muted-foreground">
                   <span className="w-2 h-2 rounded-full bg-primary" />
                   Materiales 100% naturales y sostenibles
                 </li>
-                <li className="flex items-center gap-2">
+                <li className="flex items-center gap-2 text-muted-foreground">
                   <span className="w-2 h-2 rounded-full bg-primary" />
                   Certificado de autenticidad incluido
                 </li>
-                <li className="flex items-center gap-2">
+                <li className="flex items-center gap-2 text-muted-foreground">
                   <span className="w-2 h-2 rounded-full bg-primary" />
                   Comercio justo - Apoyo directo a comunidades
                 </li>
               </ul>
 
-              <h3 className="font-display text-xl font-bold mt-8 mb-4">Etiquetas</h3>
+              <h3 className="text-lg font-semibold mt-6 mb-4">Etiquetas</h3>
               <div className="flex flex-wrap gap-2">
                 {product.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-sm"
+                    className="px-3 py-1 rounded-full text-sm glass-card border border-white/10"
                   >
                     #{tag}
                   </span>
@@ -654,14 +712,11 @@ export default function ProductDetail() {
             </div>
           </TabsContent>
 
-          <TabsContent value="reviews" className="space-y-6">
+          <TabsContent value="reviews" className="mt-6">
             {reviews.length > 0 ? (
               <div className="space-y-6">
                 {reviews.map((review) => (
-                  <div
-                    key={review.id}
-                    className="p-6 rounded-xl glass-card border border-white/10"
-                  >
+                  <div key={review.id} className="p-6 rounded-xl glass-card border border-white/10">
                     <div className="flex items-start gap-4">
                       <img
                         src={review.userAvatar}
@@ -669,13 +724,13 @@ export default function ProductDetail() {
                         className="w-12 h-12 rounded-full object-cover"
                       />
                       <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center justify-between">
                           <h4 className="font-medium">{review.userName}</h4>
                           <span className="text-sm text-muted-foreground">
-                            {review.createdAt.toLocaleDateString('es-CO')}
+                            {new Date(review.createdAt).toLocaleDateString('es-CO')}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1 mb-3">
+                        <div className="flex items-center gap-1 my-2">
                           {[...Array(5)].map((_, i) => (
                             <Star
                               key={i}
@@ -696,39 +751,46 @@ export default function ProductDetail() {
               </div>
             ) : (
               <div className="text-center py-12">
-                <p className="text-muted-foreground">
-                  Este producto aún no tiene reseñas. ¡Sé el primero en opinar!
-                </p>
+                <p className="text-muted-foreground">Aún no hay reseñas para este producto.</p>
+                <p className="text-sm text-muted-foreground mt-2">¡Sé el primero en dejar una reseña!</p>
               </div>
             )}
           </TabsContent>
 
-          <TabsContent value="shipping" className="space-y-6">
+          <TabsContent value="shipping" className="mt-6">
             <div className="grid md:grid-cols-2 gap-8">
-              <div className="p-6 rounded-xl glass-card border border-white/10">
-                <h3 className="font-display text-xl font-bold mb-4 flex items-center gap-2">
-                  <Truck className="w-5 h-5 text-primary" />
-                  Información de Envío
-                </h3>
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Información de Envío</h3>
                 <ul className="space-y-3 text-muted-foreground">
-                  <li>• Envío nacional a toda Colombia</li>
-                  <li>• Tiempo de entrega: 3-7 días hábiles</li>
-                  <li>• Envío gratis en compras mayores a $200.000</li>
-                  <li>• Seguimiento en tiempo real de tu pedido</li>
-                  <li>• Empaque especial para artesanías</li>
+                  <li className="flex items-start gap-2">
+                    <Truck className="w-5 h-5 text-primary mt-0.5" />
+                    <span>Envío a todo Colombia en 3-7 días hábiles</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Truck className="w-5 h-5 text-primary mt-0.5" />
+                    <span>Envío gratis en compras mayores a $200.000</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Truck className="w-5 h-5 text-primary mt-0.5" />
+                    <span>Seguimiento en tiempo real de tu pedido</span>
+                  </li>
                 </ul>
               </div>
-              <div className="p-6 rounded-xl glass-card border border-white/10">
-                <h3 className="font-display text-xl font-bold mb-4 flex items-center gap-2">
-                  <RotateCcw className="w-5 h-5 text-primary" />
-                  Política de Devoluciones
-                </h3>
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Política de Devoluciones</h3>
                 <ul className="space-y-3 text-muted-foreground">
-                  <li>• 30 días para solicitar devolución</li>
-                  <li>• Producto debe estar en condiciones originales</li>
-                  <li>• Devolución gratuita por defectos</li>
-                  <li>• Reembolso en 5-10 días hábiles</li>
-                  <li>• Soporte al cliente 24/7</li>
+                  <li className="flex items-start gap-2">
+                    <RotateCcw className="w-5 h-5 text-primary mt-0.5" />
+                    <span>30 días para devoluciones sin preguntas</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <RotateCcw className="w-5 h-5 text-primary mt-0.5" />
+                    <span>Reembolso completo o cambio por otro producto</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <RotateCcw className="w-5 h-5 text-primary mt-0.5" />
+                    <span>El producto debe estar en su estado original</span>
+                  </li>
                 </ul>
               </div>
             </div>
@@ -738,13 +800,11 @@ export default function ProductDetail() {
 
       {/* Related Products */}
       {relatedProducts.length > 0 && (
-        <section className="container py-12 border-t border-white/10">
-          <h2 className="font-display text-2xl font-bold mb-8">
-            Productos Relacionados
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {relatedProducts.map((relatedProduct) => (
-              <ProductCard key={relatedProduct.id} product={relatedProduct} />
+        <section className="container py-12">
+          <h2 className="font-display text-2xl font-bold mb-8">Productos Relacionados</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            {relatedProducts.map((p) => (
+              <ProductCard key={p.id} product={p} />
             ))}
           </div>
         </section>
@@ -754,7 +814,7 @@ export default function ProductDetail() {
       <AnimatePresence>
         {isFullscreen && (
           <FullscreenModal
-            src={product.images[selectedImage]}
+            src={productImages[selectedImage]}
             alt={product.title}
             isOpen={isFullscreen}
             onClose={() => setIsFullscreen(false)}

@@ -1,6 +1,6 @@
 /**
  * ULULATO Checkout Page
- * Design: Multi-step checkout with shipping, payment, and success
+ * Design: Multi-step checkout with shipping, payment, coupons and success
  * Style: "Neon Ancestral" - Cyberpunk Indígena
  */
 
@@ -14,6 +14,9 @@ import {
   Truck,
   Shield,
   ArrowLeft,
+  Tag,
+  X,
+  Percent,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,10 +29,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import Navbar from '@/components/Navbar';
-import { useCartStore, useCheckoutStore, useAuthStore } from '@/lib/store';
+import { useCartStore, useCheckoutStore, useAuthStore, useCouponStore, availableCoupons } from '@/lib/store';
 import { formatPrice } from '@/lib/mockDb';
 import { cn } from '@/lib/utils';
 import confetti from 'canvas-confetti';
+import { toast } from 'sonner';
 
 // Confetti effect for success
 const fireConfetti = () => {
@@ -62,6 +66,98 @@ const fireConfetti = () => {
     });
   }, 400);
 };
+
+// Coupon Input Component
+function CouponSection() {
+  const [couponCode, setCouponCode] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false);
+  const { appliedCoupon, discountAmount, error, applyCoupon, removeCoupon } = useCouponStore();
+  const { items, subtotal } = useCartStore();
+  
+  const categories = Array.from(new Set(items.map(item => item.product.category)));
+
+  const handleApplyCoupon = () => {
+    if (!couponCode.trim()) {
+      toast.error('Ingresa un código de cupón');
+      return;
+    }
+    
+    const success = applyCoupon(couponCode.trim(), subtotal(), categories);
+    if (success) {
+      toast.success('¡Cupón aplicado exitosamente!');
+      setCouponCode('');
+    } else {
+      toast.error(error || 'Cupón inválido');
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    removeCoupon();
+    toast.info('Cupón eliminado');
+  };
+
+  return (
+    <div className="space-y-3">
+      {appliedCoupon ? (
+        <div className="p-4 rounded-xl bg-primary/10 border border-primary/30">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/20">
+                <Tag className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium text-sm">{appliedCoupon.code}</p>
+                <p className="text-xs text-muted-foreground">{appliedCoupon.description}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-primary font-bold">-{formatPrice(discountAmount)}</span>
+              <button
+                onClick={handleRemoveCoupon}
+                className="p-1 rounded-full hover:bg-white/10 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center gap-2 text-sm text-primary hover:underline"
+          >
+            <Tag className="w-4 h-4" />
+            {isExpanded ? 'Ocultar cupón' : '¿Tienes un cupón de descuento?'}
+          </button>
+          
+          {isExpanded && (
+            <div className="flex gap-2">
+              <Input
+                placeholder="Ingresa tu código"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                className="h-10 bg-white/5 border-white/10 focus:border-primary/50 uppercase"
+              />
+              <Button
+                onClick={handleApplyCoupon}
+                variant="outline"
+                className="h-10 border-primary text-primary hover:bg-primary/10"
+              >
+                Aplicar
+              </Button>
+            </div>
+          )}
+          
+          {/* Available Coupons Hint */}
+          <div className="text-xs text-muted-foreground">
+            <p>Cupones disponibles: <span className="text-primary">BIENVENIDO10</span>, <span className="text-primary">ARTESANO20</span>, <span className="text-primary">ENVIOGRATIS</span></p>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 // Step 1: Shipping Address
 function ShippingStep({ onNext }: { onNext: () => void }) {
@@ -188,6 +284,7 @@ function ShippingStep({ onNext }: { onNext: () => void }) {
 function PaymentStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
   const { setPaymentInfo, completeOrder } = useCheckoutStore();
   const { clearCart } = useCartStore();
+  const { removeCoupon } = useCouponStore();
   const [isProcessing, setIsProcessing] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -232,6 +329,7 @@ function PaymentStep({ onNext, onBack }: { onNext: () => void; onBack: () => voi
     setPaymentInfo(formData);
     completeOrder();
     clearCart();
+    removeCoupon();
     
     setIsProcessing(false);
     onNext();
@@ -337,50 +435,46 @@ function PaymentStep({ onNext, onBack }: { onNext: () => void; onBack: () => voi
 
 // Step 3: Success
 function SuccessStep() {
-  const { orderId, resetCheckout } = useCheckoutStore();
+  const { orderId, shippingAddress } = useCheckoutStore();
 
   useEffect(() => {
     fireConfetti();
   }, []);
 
   return (
-    <div className="text-center py-12">
-      <div className="w-24 h-24 mx-auto mb-8 rounded-full bg-primary/20 flex items-center justify-center animate-pulse-glow">
-        <Check className="w-12 h-12 text-primary" />
+    <div className="text-center py-8">
+      <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-primary/20 flex items-center justify-center">
+        <Check className="w-10 h-10 text-primary" />
       </div>
 
-      <h2 className="font-display text-3xl font-bold mb-4">
-        ¡Pedido Confirmado!
-      </h2>
-
-      <p className="text-muted-foreground mb-2">
-        Tu pedido ha sido procesado exitosamente
+      <h2 className="font-display text-3xl font-bold mb-4">¡Pedido Confirmado!</h2>
+      <p className="text-muted-foreground mb-8 max-w-md mx-auto">
+        Tu pedido ha sido procesado exitosamente. Recibirás un correo de confirmación
+        con los detalles de tu compra.
       </p>
 
-      <p className="text-lg font-medium text-primary mb-8">
-        Número de orden: {orderId}
-      </p>
-
-      <div className="p-6 rounded-xl glass-card border border-white/10 max-w-md mx-auto mb-8">
-        <div className="flex items-center gap-4 mb-4">
-          <Truck className="w-8 h-8 text-primary" />
-          <div className="text-left">
-            <p className="font-medium">Envío estimado</p>
-            <p className="text-sm text-muted-foreground">3-5 días hábiles</p>
-          </div>
+      <div className="p-6 rounded-xl glass-card border border-white/10 text-left mb-8 max-w-md mx-auto">
+        <div className="flex items-center gap-3 mb-4">
+          <Truck className="w-5 h-5 text-primary" />
+          <span className="font-medium">Información de envío</span>
         </div>
         <p className="text-sm text-muted-foreground">
-          Recibirás un correo con los detalles de tu pedido y el seguimiento del envío.
+          {shippingAddress?.name}<br />
+          {shippingAddress?.address}<br />
+          {shippingAddress?.city}, {shippingAddress?.state} {shippingAddress?.zipCode}
+        </p>
+        <p className="text-sm text-primary mt-4">
+          Número de pedido: #{orderId || 'ULU-' + Date.now().toString(36).toUpperCase()}
         </p>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <Link href="/profile/orders" onClick={() => resetCheckout()}>
+        <Link href="/profile">
           <Button variant="outline" className="border-white/10 hover:bg-white/10">
             Ver mis pedidos
           </Button>
         </Link>
-        <Link href="/market" onClick={() => resetCheckout()}>
+        <Link href="/market">
           <Button className="btn-brand">
             Seguir comprando
           </Button>
@@ -390,14 +484,15 @@ function SuccessStep() {
   );
 }
 
-// Main Checkout Page
 export default function Checkout() {
-  const [, setLocation] = useLocation();
+  const [step, setStep] = useState(1);
   const { items, subtotal, shipping, total } = useCartStore();
-  const { step, setStep, isComplete } = useCheckoutStore();
+  const { isComplete } = useCheckoutStore();
   const { isAuthenticated } = useAuthStore();
+  const { appliedCoupon, discountAmount } = useCouponStore();
+  const [, setLocation] = useLocation();
 
-  // Redirect if cart is empty
+  // Redirect if cart is empty (except on success step)
   useEffect(() => {
     if (items.length === 0 && !isComplete) {
       setLocation('/market');
@@ -416,6 +511,9 @@ export default function Checkout() {
     { id: 2, title: 'Pago', icon: CreditCard },
     { id: 3, title: 'Confirmación', icon: Check },
   ];
+
+  // Calculate final total with discount
+  const finalTotal = total() - discountAmount;
 
   return (
     <div className="min-h-screen bg-background">
@@ -508,22 +606,45 @@ export default function Checkout() {
                   ))}
                 </div>
 
+                {/* Coupon Section */}
+                <div className="py-4 border-t border-white/10">
+                  <CouponSection />
+                </div>
+
                 {/* Totals */}
-                <div className="space-y-3 pt-6 border-t border-white/10">
+                <div className="space-y-3 pt-4 border-t border-white/10">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
                     <span>{formatPrice(subtotal())}</span>
                   </div>
+                  
+                  {appliedCoupon && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Percent className="w-3 h-3" />
+                        Descuento ({appliedCoupon.code})
+                      </span>
+                      <span className="text-green-500">-{formatPrice(discountAmount)}</span>
+                    </div>
+                  )}
+                  
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Envío</span>
                     <span className={shipping() === 0 ? 'text-green-500' : ''}>
                       {shipping() === 0 ? 'Gratis' : formatPrice(shipping())}
                     </span>
                   </div>
+                  
                   <div className="flex justify-between font-display font-bold text-lg pt-3 border-t border-white/10">
                     <span>Total</span>
-                    <span className="text-primary">{formatPrice(total())}</span>
+                    <span className="text-primary">{formatPrice(finalTotal)}</span>
                   </div>
+                  
+                  {appliedCoupon && (
+                    <p className="text-xs text-green-500 text-right">
+                      ¡Ahorraste {formatPrice(discountAmount)}!
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
