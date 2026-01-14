@@ -213,6 +213,20 @@ export default function Navbar() {
           )}
         >
           <div className="container py-4 space-y-4">
+            {/* Link Volviendo al Origen - Móvil */}
+            <a 
+              href="https://prototipo.ululato.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center gap-2 py-3 px-4 rounded-lg text-[#C9A962] hover:bg-[#C9A962]/10 hover:text-[#FFD100] transition-all border border-[#C9A962]/30 hover:border-[#C9A962]"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="font-light tracking-wider text-sm uppercase">VOLVIENDO AL ORIGEN</span>
+            </a>
+            
+            <div className="border-t border-white/10 pt-4" />
+            
             {navLinks.map((link) => (
               <Link
                 key={link.href}
