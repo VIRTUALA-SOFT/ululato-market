@@ -6,7 +6,7 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
-import { ShoppingCart, User, Menu, X, Search, Heart, Bell } from 'lucide-react';
+import { ShoppingCart, User, Menu, X, Search, Heart, Bell, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCartStore, useAuthStore, useFavoritesStore, useNotificationsStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
@@ -51,8 +51,19 @@ export default function Navbar() {
       >
         <div className="container mx-auto">
           <div className="flex items-center justify-between h-16 md:h-20">
+            {/* Link Volviendo al Origen */}
+            <a 
+              href="https://prototipo.ululato.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-full border border-transparent text-[#C9A962] hover:border-[#C9A962] hover:text-[#FFD100] transition-all duration-300 group mr-4"
+            >
+              <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+              <span className="font-light tracking-wider text-sm uppercase">VOLVIENDO AL ORIGEN</span>
+            </a>
+
             {/* Logo: Plumas + Línea Vertical + MARKET */}
-            <Link href="/" className="flex items-center gap-4 group">
+            <Link href="/" className="flex items-center gap-3 group">
               {/* Logo Plumas */}
               <div className="relative">
                 <img 
@@ -63,7 +74,10 @@ export default function Navbar() {
               </div>
               
               {/* Línea Vertical Separadora - Más visible */}
-              <div className="h-8 w-[2px] bg-white/40 rounded-full" />
+              <div 
+                className="h-8 w-[2px] rounded-full"
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.5)' }}
+              />
               
               {/* MARKET Text */}
               <span 

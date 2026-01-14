@@ -57,7 +57,10 @@ export default function Footer() {
                 className="w-10 h-10 object-contain"
               />
               {/* Vertical Divider - Más visible */}
-              <div className="w-[2px] h-7 bg-white/40 rounded-full" />
+              <div 
+                className="w-[2px] h-7 rounded-full"
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.5)' }}
+              />
               {/* MARKET Text */}
               <span 
                 className="text-[#FFD100] font-extralight tracking-[0.35em] text-sm uppercase"
